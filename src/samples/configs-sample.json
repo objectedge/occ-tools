@@ -1,0 +1,29 @@
+{
+  "projects": {
+    "base-path": "",
+    "storefront-dir": "",
+    "current": {
+      "path": "",
+      "name": "",
+      "env": "",
+      "url": "",
+      "credentials": {
+        "username": "",
+        "password": ""
+      },
+      "theme": {
+        "name": "",
+        "id": ""
+      }
+    },
+    "credentials": {}
+  },
+  "github": {
+    "username": "",
+    "password": "",
+    "type": "basic",
+    "token": ""
+  },
+  "use-mfa-login": true,
+  "totp-code": "123456"
+}

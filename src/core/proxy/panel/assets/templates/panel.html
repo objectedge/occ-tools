@@ -1,0 +1,382 @@
+<div class="occ-proxy-panel-content panel panel-info">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="panel-body col-xs-12">
+        <nav class="navbar navbar-default">
+          <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#proxy-panel-navbar-collapse" aria-expanded="false">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+              <a class="navbar-brand" href="#">OCC Proxy Panel</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="proxy-panel-navbar-collapse">
+              <ul class="nav navbar-nav">
+                <li class="active"><a href="#widgets-list-tab" class="occ-tab-item">Widgets <span class="sr-only">(current)</span></a></li>
+                <li><a href="#cache-list-tab" class="occ-tab-item">Cache</a></li>
+                <li><a href="#mocks-list-tab" class="occ-tab-item">Mocks</a></li>
+                <li><a href="#configs-tab" class="occ-tab-item">Configs</a></li>
+              </ul>
+            </div><!-- /.navbar-collapse -->
+          </div><!-- /.container-fluid -->
+        </nav>
+
+        <div class="occ-tab-content-container">
+
+          <div id="widgets-list-tab" class="occ-tab-content active">
+            <h3>
+              Widgets
+            </h3>
+
+            <table class="table filter-search-container">
+              <caption>
+                <div class="input-group">
+                  <span class="input-group-addon">Filter</span>
+                  <input type="text" class="form-control input-lg filter-search-field" placeholder="type a widget name, file name, region..">
+                </div>
+              </caption>
+              <thead>
+                <tr>
+                  <th class="text-center">Extension Name</th>
+                  <th class="text-center">Widget Name</th>
+
+                  <th class="text-center">Type</th>
+                  <th class="text-center">JS Files</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody data-bind="template: { foreach: widgets, afterRender: onWidgetsLoaded }">
+                <tr class="searchable">
+                  <td class="extension-name text-center search-item" data-bind="text: extensionName"></td>
+                  <td class="name text-center search-item" data-bind="text: widgetName"></td>
+                  
+                  <td class="widget-type text-center search-item" data-bind="text: type"></td>
+                  <td class="widget-js text-center search-item" data-bind="foreach: widgetFiles.js">
+                    <div data-bind="text: $data"></div>
+                  </td>
+                  <td class="status text-center">
+                    <input type="checkbox" name="checkbox-status" data-bind="attr: { id: 'checkbox-status-' + widgetName, 'data-widget-name': widgetName }">
+                  </td>
+                  <td class="action text-center">
+                    <button class="btn btn-primary" data-bind="click: $parent.uploadWidget" data-toggle="modal" data-target="#consoleModal">Upload to OCC</button>
+                    <button class="btn btn-primary" data-bind="click: $parent.generateExtensionClick" data-toggle="modal" data-target="#generate-widget-modal">Generate Extension</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="cache-list-tab" class="occ-tab-content">
+            <h3 class="cache-title pull-left">
+              Cache
+            </h3>
+            <div class="cache-options pull-right">
+              <button class="btn btn-danger" data-bind="click: wipeCache.bind(null, null)">Wipe Cache</button>
+            </div>
+
+            <table class="table filter-search-container col-xs-12">
+              <caption class="row">
+                <div class="col-xs-11 reset-padding-right">
+                  <div class="input-group">
+                    <span class="input-group-addon">Search</span>
+                    <input type="text" class="form-control input-lg filter-search-field" placeholder="type a path name..">
+                  </div>
+                </div>
+                
+                <div class="dropdown col-xs-1">
+                  <button class="btn btn-default btn-lg dropdown-toggle dropdown-filter" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                    Filter
+                    <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a href="#none" data-bind="click: filterContent.bind($data, '')">NONE</a></li>
+                    <li><a href="#apis" data-bind="click: filterContent.bind($data, 'ccstoreui')">APIs</a></li>
+                    <li><a href="#html" data-bind="click: filterContent.bind($data, '^((?!css|js|ttf|png|jpg|woff2|woff|ccstoreui).)*$')">HTML</a></li>
+                    <li><a href="#js" data-bind="click: filterContent.bind($data, 'js')">JS</a></li>
+                    <li><a href="#css" data-bind="click: filterContent.bind($data, 'css')">CSS</a></li>
+                  </ul>
+                </div>
+              </caption>
+              <thead>
+                <tr>
+                  <th class="text-center request-head">Request</th>
+                  <th class="text-center">Creation</th>
+                  <th class="text-center">Saved Files</th>
+                  <th class="text-center buttons-head">Content</th>
+                  <th class="text-center buttons-head">Status</th>
+                  <th class="text-center buttons-head">Delete</th>
+                  <th class="text-center ">Mock</th>
+                </tr>
+              </thead>
+              <tbody data-bind="template: { foreach: cacheList, afterRender: onCacheListRendered }">
+                <tr class="searchable">
+                  <td class="path text-left search-item">
+                    <span data-bind="text: key"></span>
+                  </td>
+                  <td class="creation-date text-center">
+                    <span data-bind="text: new Date(date).toLocaleDateString('pt-BR')"></span>
+                    <span data-bind="text: new Date(date).toLocaleTimeString('pt-BR')"></span>
+                  </td>
+                  <td class="data-path text-center">
+                    <button type="button" class="info-button btn btn-default" data-bind="click: $parent.showContent.bind($data, $data.dataFile, false)">.dat</button>
+                    <button type="button" class="info-button btn btn-default" data-bind="click: $parent.showContent.bind($data, $data.dir, false)">.json</button>
+                  </td>
+                  <td class="data-content text-center">
+                    <button class="btn btn-success" data-bind="click: $parent.openFileContentHandler">Edit</button>
+                  </td>
+                  <td class="dont-cache text-center">
+                    <input type="checkbox" name="checkbox-dont-cache" data-bind="attr: { checked: active, 'data-cache-key': key }">
+                  </td>
+                  <td class="action text-center">
+                    <button class="btn btn-danger" data-bind="click: $parent.wipeCache.bind(null, key)">Delete</button>
+                  </td>
+                  <td class="mock text-center">
+                    <button class="btn btn-success" data-bind="click: $parent.openSaveAsMockModal.bind($parent)">Save as Mock</button>
+                  </td>
+                </tr>
+              </tbody>
+
+              <!-- ko if: !cacheList().length -->
+              <tbody>
+                <tr>
+                  <td class="path text-left">No Cache</td>
+                  <td class="creation-date text-center">--</td>
+                  <td class="data-path text-center">--</td>
+                  <td class="data-content text-center">--</td>
+                  <td class="dont-cache text-center">--</td>
+                  <td class="action text-center">--</td>
+                  <td class="mock text-center">--</td>
+                </tr>
+              </tbody>
+              <!-- /ko -->
+            </table>
+          </div>
+
+          <div id="mocks-list-tab" class="occ-tab-content">
+            <h3 class="mocks-title pull-left">
+              Mocks
+            </h3>
+            <div class="mocks-options pull-right">
+              <button class="btn btn-danger" data-bind="click: wipeMock.bind(null, null)">Wipe Mocks</button>
+            </div>
+
+            <table class="table filter-search-container col-xs-12">
+              <caption class="row">
+                <div class="col-xs-11 reset-padding-right">
+                  <div class="input-group">
+                    <span class="input-group-addon">Search</span>
+                    <input type="text" class="form-control input-lg filter-search-field" placeholder="type a path name..">
+                  </div>
+                </div>
+                
+                <div class="dropdown col-xs-1">
+                  <button class="btn btn-default btn-lg dropdown-toggle dropdown-filter" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                    Filter
+                    <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a href="#none" data-bind="click: filterContent.bind($data, '')">NONE</a></li>
+                    <li><a href="#apis" data-bind="click: filterContent.bind($data, 'ccstoreui')">APIs</a></li>
+                    <li><a href="#html" data-bind="click: filterContent.bind($data, '^((?!css|js|ttf|png|jpg|woff2|woff|ccstoreui).)*$')">HTML</a></li>
+                    <li><a href="#js" data-bind="click: filterContent.bind($data, 'js')">JS</a></li>
+                    <li><a href="#css" data-bind="click: filterContent.bind($data, 'css')">CSS</a></li>
+                  </ul>
+                </div>
+              </caption>
+              <thead>
+                <tr>
+                  <th class="text-center small-table-head">URL</th>
+                  <th class="text-center request-head">File Path</th>
+                  <th class="text-center buttons-head">Content</th>
+                  <th class="text-center buttons-head">Status</th>
+                  <th class="text-center buttons-head">Delete</th>
+                </tr>
+              </thead>
+              <tbody data-bind="template: { foreach: mocksList, afterRender: onMocksListRendered }">
+                <tr class="searchable">
+                  <td class="url text-left search-item">
+                    <span data-bind="text: url"></span>
+                  </td>
+                  <td class="file-path text-center search-item">
+                    <span data-bind="text: filePath"></span>
+                  </td>
+                  <td class="data-content text-center">
+                    <button class="btn btn-success" data-bind="click: $parent.openMockContentHandler">Edit</button>
+                  </td>
+                  <td class="mock-status text-center">
+                    <input type="checkbox" name="checkbox-mock-status" data-bind="attr: { checked: enabled }">
+                  </td>
+                  <td class="action text-center">
+                    <button class="btn btn-danger" data-bind="click: $parent.wipeMock.bind($data, $data)">Delete</button>
+                  </td>
+                </tr>
+              </tbody>
+
+              <!-- ko if: !mocksList().length -->
+              <tbody>
+                <tr>
+                  <td class="path text-center"> No Mocks</td>
+                  <td class="file-path text-left">--</td>
+                  <td class="path text-left">--</td>
+                  <td class="data-content text-center">--</td>
+                  <td class="mock-status text-center"></td>
+                  <td class="action text-center">--</td>
+                </tr>
+              </tbody>
+              <!-- /ko -->
+            </table>
+          </div>
+
+          <div id="configs-tab" class="occ-tab-content">
+            <h3>
+              Configs
+            </h3>
+            <div class="configs-container" data-bind="template: { foreach: Object.keys(proxyOptions), afterRender: onConfigsRendered }">
+              <!-- ko if: $parent.proxyOptions[$data].type === "string" -->
+              <div>
+                <span data-bind="text: $parent.proxyOptions[$data].label +  ': '" class="config-label"></span>
+                <strong data-bind="text: $parent.proxyOptions[$data].value"></strong>
+              </div>
+              <!-- /ko -->
+              <!-- ko if: $parent.proxyOptions[$data].type === "checkbox" -->
+              <div class="checkbox">
+                <span data-bind="text: $parent.proxyOptions[$data].label" class="config-label"></span>
+                <label>
+                  <input type="checkbox" data-bind="attr: { checked: $parent.proxyOptions[$data].value, name: 'checkbox-' + $data + '-config', 'data-config-key': $data }">
+                </label>
+              </div>
+              <!-- /ko -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+  <!-- Modal -->
+  <div class="modal fade generate-widget" id="generate-widget-modal" tabindex="-1" role="dialog" aria-labelledby="generate-widget-modal-label">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="generate-widget-modal-label">Generate Widget</h4>
+        </div>
+        <div class="modal-body">
+          <form action="">
+            <div class="form-group">
+              <label for="extension-id-field">Extension ID</label>
+              <input type="text" class="form-control" id="extension-id-field" data-bind="disable: !$data.extensionId(), value: $data.extensionId" placeholder="Provide the extension id">
+            </div>
+            <button type="submit" class="btn btn-success" data-bind="disable: !$data.extensionId(), click: $data.generateExtension.bind($parent)">Generate</button>
+            <small data-bind="visible: !$data.extensionId()">Getting extension ID, please wait...</small>
+          </form>
+          <ul class="status-data" data-bind="foreach: $data.widgetStatus">
+            <li data-bind="text: statusData, css: { error: error }" class="status-line"></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade status-console" id="consoleModal" tabindex="-1" role="dialog" aria-labelledby="consoleModalLabel">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="consoleModalLabel">Console</h4>
+        </div>
+        <div class="modal-body">
+          <ul data-bind="foreach: widgetStatus">
+            <li data-bind="text: statusData, css: { error: error }" class="status-line"></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade edit-json" id="editJson" tabindex="-1" role="dialog" aria-labelledby="editJsonLabel">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="alert alert-success alert-message pull-left" data-bind="css: { 'show-message': $data.showSavedMessage()}" role="alert">Saved!</div>
+          <div class="alert alert-danger alert-message pull-left" data-bind="css: { 'show-message': $data.showErrorMessage()}" role="alert">Error! please see the console</div>
+
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <!-- ko if: renderJSONEditor -->
+          <div id="json-editor"></div>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade content-viewer" id="content-viewer" tabindex="-1" role="dialog" aria-labelledby="content-viewer-label">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+            <div class="alert alert-success alert-message pull-left" data-bind="css: { 'show-message': $data.showSavedMessage()}" role="alert">Saved!</div>
+            <div class="alert alert-danger alert-message pull-left" data-bind="css: { 'show-message': $data.showErrorMessage()}" role="alert">Error! please see the console</div>
+
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <!-- ko if: contentViewer -->
+          <textarea id="content-viewer-text-area" class="content-viewer-data" style="width: 100%" data-bind="value: contentViewer"></textarea>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade save-as-mock-modal" id="save-as-mock-modal" tabindex="-1" role="dialog" aria-labelledby="save-as-mock-modal-label">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+            <div class="alert alert-success alert-message pull-left" data-bind="css: { 'show-message': $data.showSavedMessage()}" role="alert">Saved!</div>
+            <div class="alert alert-danger alert-message pull-left" data-bind="css: { 'show-message': $data.showErrorMessage()}" role="alert">Error! please see the console</div>
+
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <!-- ko with: mockData -->
+          <form>
+            <div class="form-group">
+              <label for="mock-url-field">URL <small>(Optional)</small></label>
+              <input type="text" class="form-control" id="mock-url-field" data-bind="value: url, valueUpdate: 'keyup'">
+              <p class="help-block">URL pattern that will receive this mock as response.</p>
+            </div>
+            <div class="form-group">
+              <label for="mock-file-name-field">File Name <small>(Optional)</small></label>
+              <input type="text" class="form-control" id="mock-file-name-field" data-bind="value: fileName">
+              <p class="help-block">The Mock's name. This name is generated with MD5 using the URL + .dat extension by default. You can change this, but it will keep the .dat extension</p>
+            </div>
+            <div class="form-group">
+              <label>Will be saved at:</label>
+              <input type="text" class="form-control" data-bind="value: mockFilePath">
+              <p class="help-block">This is the path where this mock will be saved at.</p>
+            </div>
+            <button type="submit" class="btn btn-success" data-bind="click: $parent.saveAsMock.bind($parent)">Save</button>
+          </form>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-danger alert-dismissible fade in error-message-box" id="error-message-box" data-bind="visible: $data.errorMessage()"role="alert"> 
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button> 
+    <h4>Error!</h4> 
+    <p data-bind="text: $data.errorMessage()"></p> 
+    <button type="button" data-dismiss="alert" aria-label="Close" class="btn btn-default">Close</button>
+  </div>
+</div>

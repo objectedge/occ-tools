@@ -1,0 +1,11 @@
+{
+  "name": "#command-name",
+  "version": "1.0.0",
+  "description": "#command-description",
+  "private": true,
+  "author": "#author-email",
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}

@@ -1,0 +1,74 @@
+<!-- ko if: $data.hasOwnProperty('structure') && $data.structure() == 101 -->
+  <div  data-bind="css: widthClass, attr: {id: 'region-'+name()}">
+    <div data-bind="template: { name: 'stack-template' }"></div>
+  </div>
+<!-- /ko -->
+<!-- ko ifnot: $data.hasOwnProperty('structure') && $data.structure() == 101 -->
+  <!-- ko if: $data.widgets() && $data.widgets().length && !$data.globalWidgetsOnly() -->
+    <div  data-bind="css: widthClass, attr: {id: 'region-'+name()}">
+
+      <!-- ko foreach: $data.widgets  -->
+        <!-- ko ifnot: global  -->
+          <!-- ko if: initialized  -->
+            <!-- ko if: window.proxyTemplates.data.hasWidgets && window.proxyTemplates.checkElements($data, $parent) -->              
+              <!-- ko foreach: window.proxyTemplates.getElements($data, $parent) -->
+                <!-- ko addTemplate: Object.values($data)[0] --><!-- /ko -->
+              <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko ifnot: window.proxyTemplates.data.hasWidgets && window.proxyTemplates.checkElements($data, $parent) -->    
+              <!-- ko if: $data.elementsSrc -->
+                <!-- ko addTemplate: elementsSrc() --><!-- /ko -->
+              <!-- /ko -->
+            <!-- /ko -->
+			<div class="sf-display-error">
+  			  <span class="sf-error-title" data-bind="text: $root.displayErrorMessage"></span>:
+  			  <span class="sf-error-msg"></span>
+			</div>
+
+          <div class="occ-tools-proxy-widget-area" 
+               data-bind="css: {
+                              'oracle-widget': window.proxyTemplates.isOracleWidget($data)
+                          }  
+          ">
+          <div class="widget-area-overlay">
+            <div class="occ-tools-proxy-widget-state" 
+                 data-bind="
+                 click: function (data, event) {
+                  if(window.proxyTemplates.isOracleWidget(data)) {
+                    return false;
+                  }
+
+                  var widgetName = window.proxyTemplates.getWidgetName(data);
+                  oe.tools.toggleWidgetState(widgetName);
+                  $(event.currentTarget).toggleClass('active');
+                  window.location.reload();
+                 },
+                 css: {
+                   active: window.oe.tools.isWidgetActive(window.proxyTemplates.getWidgetName($data))
+                  }"></div>
+
+            <div class="widget-area-widget-name">
+              <span data-bind="text: window.proxyTemplates.getWidgetName($data) + ' (' + $data.id() + ')'"></span>
+            </div>
+          </div>
+            <!-- ko if: window.proxyTemplates.data.hasWidgets && window.proxyTemplates.getTemplate($data, $parent) -->
+              <div data-bind='template: {name: templateUrl(),templateSrc: window.proxyTemplates.getTemplate($data, $parent)}, attr: {id: typeId()+"-"+id()}'></div>
+            <!-- /ko -->
+
+            <!-- ko ifnot: window.proxyTemplates.data.hasWidgets && window.proxyTemplates.getTemplate($data) -->
+              <!-- ko ifnot: $data.templateSrc -->
+                <!-- ko if: templateUrl() -->
+                  <div data-bind='template: {name: templateUrl(), templateUrl: ""}, attr: {id: typeId()+"-"+id()}'></div>
+                <!-- /ko -->
+              <!-- /ko -->
+              <!-- ko if: $data.templateSrc -->
+                <div data-bind='template: {name: templateUrl(),templateSrc: templateSrc()}, attr: {id: typeId()+"-"+id()}'></div>
+              <!-- /ko -->
+            <!-- /ko -->
+          </div>
+          <!-- /ko -->
+        <!-- /ko -->
+      <!-- /ko -->
+    </div>
+  <!-- /ko -->
+<!-- /ko -->

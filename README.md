@@ -4,7 +4,7 @@ This is the CLI version of OCC-TOOLS and intend to make all occ-tools facilities
 
 # Usage
 
-https://github.com/intelimen/occ-tools/blob/docs/v2/CLI.md
+https://github.com/objectedge/occ-tools/wiki
 
 ___
 
@@ -20,7 +20,7 @@ NVM - https://github.com/creationix/nvm
 
 - Open a terminal session
 - Go to the directory where you have cloned the occ-tools-cli
-- Install the node 8.4.0 using nvm: `nvm install 8.4.0`
+- Install the nodejs
 - Run: `npm install`
 
 ## Running

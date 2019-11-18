@@ -1,6 +1,6 @@
 'use strict';
 
-var launcher = require('james-browser-launcher');
+var launcher = require('@httptoolkit/browser-launcher');
 var async = require('async');
 var path = require('path');
 var url = require('url');

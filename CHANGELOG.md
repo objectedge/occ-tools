@@ -2,6 +2,10 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.23] - 2019-11-18]
+### Fixed
+- Issue with the james-proxy/james-browser-launcher. It was not opening the browser anymore properly, changed to @httptoolkit/browser-launcher.
+
 ## [2.0.0-beta.22] - 2019-04-24]
 ### Added
 - New commands to manage server-side variables (list, download, upload, delete);

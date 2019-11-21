@@ -3,6 +3,7 @@ var util = require('util');
 var fs = require('fs-extra');
 var async = require('async');
 var winston = require('winston');
+var occConfigs = require('../config');
 
 var github = require('../github');
 var config = require('../config');
@@ -39,10 +40,10 @@ function processCustomWidget(changes, filePath) {
         }
         break;
       default:
-        skipFile('storefront/widgets/objectedge', filePath);
+        skipFile(occConfigs.dir.storefront_dir_name+'/widgets/objectedge', filePath);
     }
   } else {
-    skipFile('storefront/widgets/objectedge', filePath);
+    skipFile(occConfigs.dir.storefront_dir_name+'/widgets/objectedge', filePath);
   }
 }
 
@@ -68,7 +69,7 @@ function processStorefront(changes, filePath) {
       break;
     case 'emails':
       if (filePath[1] === 'samples' || filePath[1] === '.gitkeep') {
-        skipFile('storefront', filePath);
+        skipFile(occConfigs.dir.storefront_dir_name, filePath);
       } else if (filePath[1] === 'templates' || filePath[1] === 'function') {
         changes.allEmails = true;
       } else {
@@ -82,14 +83,14 @@ function processStorefront(changes, filePath) {
       if ((filePath[1] === 'config' || filePath[1] === 'gateway') && filePath.length > 3) {
         changes[filePath[1]].add(filePath[2]);
       } else {
-        skipFile('storefront', filePath);
+        skipFile(occConfigs.dir.storefront_dir_name, filePath);
       }
       break;
     case 'stacks':
       if (filePath.length > 2) {
         changes.stack.add(filePath[1]);
       } else {
-        skipFile('storefront', filePath);
+        skipFile(occConfigs.dir.storefront_dir_name, filePath);
       }
       break;
     case 'widgets':
@@ -98,7 +99,7 @@ function processStorefront(changes, filePath) {
       } else if (filePath[1] === 'oracle' && filePath.length > 3) {
         changes.widget.upload.add(filePath[2]);
       } else {
-        skipFile('storefront', filePath);
+        skipFile(occConfigs.dir.storefront_dir_name, filePath);
       }
       break;
     case 'responseFilters.json':
@@ -118,7 +119,7 @@ function processStorefront(changes, filePath) {
       }
       break;
     default:
-      skipFile('storefront', filePath);
+      skipFile(occConfigs.dir.storefront_dir_name, filePath);
       break;
   }
 }
@@ -177,7 +178,7 @@ module.exports = function(revision, options, callback) {
       }
       var filePath = file.split('/');
       switch (filePath[0]) {
-        case 'storefront':
+        case occConfigs.dir.storefront_dir_name:
           processStorefront(_changes, filePath.slice(1));
           break;
         case 'search':

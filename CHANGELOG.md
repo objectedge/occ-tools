@@ -7,6 +7,7 @@ This project must adhere to [this](https://github.com/olivierlacan/keep-a-change
 - Allow ES6 widgets to define a template for a KO component as a separate HTML file.
 ### Fixed
 - Issue with the james-proxy/james-browser-launcher. It was not opening the browser anymore properly, changed to @httptoolkit/browser-launcher.
+- Use storefront configurable dir on generate deploy command.
 
 ## [2.0.0-beta.22] - 2019-04-24]
 ### Added

@@ -1,7 +1,7 @@
 {
   "name": "occ-tools-cli",
   "productName": "OCC-TOOLS-CLI",
-  "version": "2.0.0-beta.23",
+  "version": "2.0.0-beta.24",
   "description": "Object Edge tools for tasks automation on Oracle Cloud Commerce platform.",
   "license": "MIT",
   "repository": "github.com/intelimen/occ-tools",
@@ -39,6 +39,7 @@
     "glob": "7.1.2",
     "globcat": "^0.7.0",
     "hoxy": "^3.2.0",
+    "html-loader": "^0.5.5",
     "isomorphic-git": "^0.51.7",
     "jsesc": "^2.5.1",
     "less": "^2.6.1",

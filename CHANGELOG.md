@@ -2,6 +2,10 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.24] - 2019-11-21]
+### Added
+- Allow ES6 widgets to define a template for a KO component as a separate HTML file.
+
 ## [2.0.0-beta.23] - 2019-11-18]
 ### Fixed
 - Issue with the james-proxy/james-browser-launcher. It was not opening the browser anymore properly, changed to @httptoolkit/browser-launcher.

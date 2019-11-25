@@ -196,7 +196,10 @@ Compiler.prototype.defineCompiler = function (done) {
         {
           test: /\.html$/,
           exclude: /node_modules/,
-          loader: 'html-loader'
+          loader: 'html-loader',
+          query: {
+            minimize: false
+          }
         }
       ]
     },

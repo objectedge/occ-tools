@@ -40,6 +40,7 @@
     "globcat": "^0.7.0",
     "hoxy": "^3.2.0",
     "html-loader": "^0.5.5",
+    "http-parser-js": "^0.5.2",
     "isomorphic-git": "^0.51.7",
     "jsesc": "^2.5.1",
     "less": "^2.6.1",

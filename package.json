@@ -54,7 +54,7 @@
     "shelljs": "^0.7.0",
     "socket.io": "^2.3.0",
     "uglify-js": "^2.8.10",
-    "webpack": "^4.41.2",
+    "webpack": "^1.13.2",
     "winston": "^2.1.1",
     "xml2json": "0.11.2"
   },

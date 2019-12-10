@@ -20,7 +20,7 @@ NVM - https://github.com/creationix/nvm
 
 - Open a terminal session
 - Go to the directory where you have cloned the occ-tools-cli
-- Install the nodejs
+- Install the nodejs version 13.2+
 - Run: `npm install`
 
 ## Running

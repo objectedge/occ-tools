@@ -2,6 +2,10 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.23] - 2019-11-29]
+### Fixed
+- Fixed issue in the Proxy due the NODEJS HTTP PARSER changes, ref: https://github.com/nodejs/node/issues/27711, https://github.com/sam-github/node/commit/576b7f4b837e50411a0c73f6af8f7bdad0a961c9, https://www.npmjs.com/package/http-parser-js
+
 ## [2.0.0-beta.23] - 2019-11-21]
 ### Added
 - Allow ES6 widgets to define a template for a KO component as a separate HTML file.

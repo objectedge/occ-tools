@@ -297,7 +297,7 @@ Generator.prototype.do_sse = function(subcmd, opts, args, callback) {
     return callback(error);
   });
 
-  sse.generate(name, opts, cb);
+  sse.generate(name, opts, callback);
 };
 
 Generator.prototype.do_sse.help = (

@@ -41,7 +41,8 @@ var _configDescriptor = {
     search_root: path.join(configsData.projects.current.path, 'search'),
     server_side_root: path.join(configsData.projects.current.path, 'server-side-extensions'),
     storefront_dir_name: storefrontDir,
-    mocks: path.join(configsData.projects.current.path, storefrontDir, mocksDirName)
+    mocks: path.join(configsData.projects.current.path, storefrontDir, mocksDirName),
+    instanceDefinitions: path.join(configsData.projects.current.path, 'instances-definitions')
   },
   theme: {
     name: configsData.projects.current.theme.name,

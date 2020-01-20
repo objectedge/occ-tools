@@ -35,7 +35,7 @@
     "dotenv": "^2.0.0",
     "extend": "^3.0.0",
     "extract-zip": "1.6.6",
-    "fs-extra": "^0.30.0",
+    "fs-extra": "^8.1.0",
     "glob": "7.1.2",
     "globcat": "^0.7.0",
     "hoxy": "^3.2.0",

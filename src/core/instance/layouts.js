@@ -13,6 +13,16 @@ class Layouts {
     this.request = promisify(coreInstance._occ.request.bind(coreInstance._occ));
   }
 
+  getWidgetDetails(id) {
+    return new Promise((resolve, reject) => {
+      if(!id) {
+        return reject('Please provide a widget id');
+      }
+
+
+    });
+  }
+
   createLayoutInstance(pageDefinition) {
     return new Promise(async (resolve, reject) => {
       if(!pageDefinition) {

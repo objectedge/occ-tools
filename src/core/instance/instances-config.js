@@ -11,7 +11,8 @@ class InstancesConfig {
 
     this.definitionsBasePath = occConfig.dir.instanceDefinitions;
     this.definitionsPaths = {
-      layouts: path.join(occConfig.dir.instanceDefinitions, this.instanceId, 'layouts')
+      layouts: path.join(occConfig.dir.instanceDefinitions, this.instanceId, 'layouts'),
+      widgets: path.join(occConfig.dir.instanceDefinitions, this.instanceId, 'widgets')
     }
   }
 }

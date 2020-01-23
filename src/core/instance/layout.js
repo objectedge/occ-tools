@@ -5,22 +5,12 @@ const winston = require('winston');
 const promisify = require('util').promisify;
 const instancesConfig = require('./instances-config');
 
-class Layouts {
+class Layout {
   constructor(options, coreInstance) {
     this.options = options;
     this.instancesConfig = instancesConfig();
     this.occ = coreInstance._occ;
     this.request = promisify(coreInstance._occ.request.bind(coreInstance._occ));
-  }
-
-  getWidgetDetails(id) {
-    return new Promise((resolve, reject) => {
-      if(!id) {
-        return reject('Please provide a widget id');
-      }
-
-
-    });
   }
 
   createLayoutInstance(pageDefinition) {
@@ -47,8 +37,9 @@ class Layouts {
 
         for(let pageLayout of pageDefinition.pageLayouts) {
           const layout = pageLayout.layout;
-          const pageLayoutFile = path.join(pageLayoutsPath, `${pageLayout.name}-${pageLayout.repositoryId}`, 'page.json');
-          const layoutFile = path.join(pageLayoutsPath, `${pageLayout.name}-${pageLayout.repositoryId}`, 'layout.json');
+          const layoutPath = path.join(pageLayoutsPath, `${pageLayout.name}-${pageLayout.repositoryId}`);
+          const pageLayoutFile = path.join(layoutPath, 'page.json');
+          const layoutFile = path.join(layoutPath, 'layout.json');
 
           winston.info(`Creating page layout json file ${pageLayoutFile}`);
           await fs.outputJson(pageLayoutFile, pageLayout, { spaces: 2 });
@@ -130,12 +121,12 @@ class Layouts {
 }
 
 module.exports = async function(action, options, callback) {
-  const layouts = new Layouts(options, this);
+  const layout = new Layout(options, this);
 
   try {
     switch(action) {
       case 'grab-all':
-        callback(null, await layouts.getAllLayouts());
+        callback(null, await layout.getAllLayouts());
         break;
       default:
         callback();

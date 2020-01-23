@@ -40,4 +40,30 @@ Instance.prototype.do_grab_layouts.help = (
   'Grab all layouts.\n\n'
 );
 
+Instance.prototype.do_grab_widgets = function(subcmd, opts, args, callback) {
+  login(function(error) {
+    if (error) {
+      return callback(error);
+    }
+
+    var instance = new InstanceCmd('admin');
+
+    instance.on('complete', function(msg) {
+      winston.info(msg);
+      return callback();
+    });
+
+    instance.on('error', function(err) {
+      return callback(err);
+    });
+
+    instance.grabWidgets();
+  });
+};
+
+
+Instance.prototype.do_grab_widgets.help = (
+  'Grab all widgets.\n\n'
+);
+
 module.exports = Instance;

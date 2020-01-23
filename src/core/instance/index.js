@@ -3,7 +3,8 @@ var util = require('util');
 
 var OCC = require('../occ');
 var Auth = require('../auth');
-var _layouts = require('./layouts');
+var _layout = require('./layout');
+var _widget = require('./widget');
 
 function Instance(environment, options) {
   if (!environment) {
@@ -21,11 +22,22 @@ util.inherits(Instance, EventEmitter);
 
 Instance.prototype.grabLayouts = function(options) {
   var self = this;
-  _layouts.call(self, 'grab-all', options, function(error) {
+  _layout.call(self, 'grab-all', options, function(error) {
     if (error) {
       self.emit('error', error);
     } else {
       self.emit('complete', 'Grab Layouts Completed!');
+    }
+  });
+};
+
+Instance.prototype.grabWidgets = function(options) {
+  var self = this;
+  _widget.call(self, 'grab-all', options, function(error) {
+    if (error) {
+      self.emit('error', error);
+    } else {
+      self.emit('complete', 'Grab Widgets Completed!');
     }
   });
 };

@@ -17,17 +17,24 @@ class Widget {
     return new Promise(async (resolve, reject) => {
       try {
         const widgetsList = (await this.getAllWidgets()).items;
+        const totalWidgets = widgetsList.length;
         const widgetsPath = this.instancesConfig.definitionsPaths.widgets;
 
+        let count = 0;
         for(let widgetDetail of widgetsList) {
           const widgetPath = path.join(widgetsPath, widgetDetail.widgetType);
+          const totalInstances = widgetDetail.instances.length;
 
-          winston.info(`Getting widget "${widgetDetail.widgetType}" instance details`);
+          winston.info(`Getting widget "${widgetDetail.widgetType}-${widgetDetail.id}" instance details`);
+          winston.info(`Total Widget instances: ${totalInstances}`);
 
           for(let widgetInstanceReference of widgetDetail.instances) {
             const widgetInstanceDetails = await this.getWidgetDetails(widgetInstanceReference.id);
             await fs.outputJSON(path.join(widgetPath, `${widgetInstanceReference.id}.json`), widgetInstanceDetails, { spaces: 2 });
           }
+          count++;
+          winston.info(`overall process: ${(count / totalWidgets * 100).toFixed(2)}%`);
+          winston.info('');
         }
 
         resolve();

@@ -1,4 +1,5 @@
 var fs = require('fs-extra');
+var walk = require('walkdir');
 var util = require('util');
 var path = require('path');
 var hoxy = require('hoxy');
@@ -368,27 +369,27 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
     }
   }
 
-  fs.walk(currentAppLevelExtensionDir).on('data', function (item) {
-    if (new RegExp(configsPath).test(item.path)) return;
+  walk(currentAppLevelExtensionDir).on('file', function (item) {
+    if (new RegExp(configsPath).test(item)) return;
 
-    if(item.stats.isFile() && /\.js/.test(item.path)) {
-      var jsName = path.basename(item.path, '.js');
+    if(/\.js/.test(item)) {
+      var jsName = path.basename(item, '.js');
 
-      if (/vendors/.test(item.path) && !/\.min\.js/.test(item.path) && configs.uglify !== false) {
-        var minifiedFile = UglifyJS.minify(item.path, configs.uglify);
+      if (/vendors/.test(item) && !/\.min\.js/.test(item) && configs.uglify !== false) {
+        var minifiedFile = UglifyJS.minify(item, configs.uglify);
         var tempFileDir = path.join(outputPath, 'vendors');
 
-        item.path = path.resolve(tempFileDir, jsName + '.min.js');
+        item = item.resolve(tempFileDir, jsName + '.min.js');
 
         fs.ensureDirSync(tempFileDir);
-        fs.writeFileSync(item.path, minifiedFile.code);
+        fs.writeFileSync(item, minifiedFile.code);
       }
 
       jsName = jsName.replace(/[^\w\s]/g, '');
 
       filesList.push({
         fileName: jsName,
-        path: item.path
+        path: item
       });
     }
   }).on('end', function () {
@@ -481,43 +482,37 @@ OCCProxy.prototype.getWidgetOptions = function (options, done) {
   var processTranspileJSs = function () {
     var widgetJSPath = path.join(config.dir.project_root, '.occ-transpiled', 'widgets', options.widgetName);
 
-    fs.walk(widgetJSPath).on('data', function (item) {
-      if(item.stats.isFile()) {
-        options.widgetFiles.js.push(item.path);
-      }
+    walk(widgetJSPath).on('file', function (item) {
+      options.widgetFiles.js.push(item);
     }).on('end', function () {
       done(options);
     });
   };
 
   //Populate all templates and js files
-  fs.walk(path.join(options.widgetPath)).on('data', function (item) {
-    if(item.stats.isFile()) {
-      if(item.path.indexOf('/js/') > -1 && !isES6) {
+  walk(path.join(options.widgetPath)).on('file', function (item) {
+    if(item.indexOf('/js/') > -1 && !isES6) {
 
-        //Ignore SRC folder for now
-        if(item.path.indexOf('/js/src') > -1) {
-          return;
-        }
-
-        options.widgetFiles.js.push(item.path);
+      //Ignore SRC folder for now
+      if(item.indexOf('/js/src') > -1) {
+        return;
       }
 
-      if(item.path.indexOf('/templates/') > -1) {
-        options.widgetFiles.template.push(item.path);
-      }
-
-      if(item.path.indexOf('/less/') > -1) {
-        options.widgetFiles.less.push(item.path);
-      }
-
-      if(item.path.indexOf('/' + options.widgetName + '/locales/') > -1) {
-        var lang = path.basename(path.dirname(item.path));
-        options.widgetFiles.locales[lang] = item.path;
-      }
+      options.widgetFiles.js.push(item);
     }
 
+    if(item.indexOf('/templates/') > -1) {
+      options.widgetFiles.template.push(item);
+    }
 
+    if(item.indexOf('/less/') > -1) {
+      options.widgetFiles.less.push(item);
+    }
+
+    if(item.indexOf('/' + options.widgetName + '/locales/') > -1) {
+      var lang = path.basename(path.dirname(item));
+      options.widgetFiles.locales[lang] = item;
+    }
   }).on('end', function () {
     if(isES6) {
       processTranspileJSs();

@@ -4,6 +4,7 @@ var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 var path = require('path');
 var fs = require('fs-extra');
+var walk = require('walkdir');
 var async = require('async');
 var exec = require('child_process').exec;
 var appConfig = require('../config');
@@ -77,7 +78,7 @@ Testing.prototype.run = function(options) {
       return;
     }
 
-    
+
 
     return;
 
@@ -110,11 +111,9 @@ Testing.prototype.run = function(options) {
     // });
   };
 
-  fs.walk(specsPath).on('data', function (item) {
-    if(item.stats.isFile()) {
-      if(item.path.indexOf('config.json') < 0) {
-        specFiles.push(item.path);
-      }
+  walk(specsPath).on('file', function (item) {
+    if(item.indexOf('config.json') < 0) {
+      specFiles.push(item);
     }
   }).on('end', runTestings);
 };

@@ -1,8 +1,8 @@
 /**
  * Native dependencies
  */
-var fs = require('fs-extra');
 var path = require('path');
+var walk = require('walkdir');
 
 /**
  * Application dependencies
@@ -47,7 +47,7 @@ function replaceLESS(done, options) {
       paths : paths,
       dumpLineNumbers: 'comments'
     };
-    
+
     //Render all imports
     less.render(importFiles, lessOptions, function (error, output) {
       if(error) {
@@ -61,9 +61,9 @@ function replaceLESS(done, options) {
 
       //Remove the first result
       proxyLESSContent.shift();
-      
+
       //Merge them and set a done callback
-      widgetCSS = proxyLESSContent.join('\n');      
+      widgetCSS = proxyLESSContent.join('\n');
       done(null, widgetCSS);
     });
   };
@@ -137,9 +137,9 @@ function forEach(array, callback) {
 function walkThemeDir(themeDir, eachFile, done) {
   var allItems = [];
 
-  fs.walk(themeDir).on('data', function (item) {
-    if(item.stats.isFile() && /\.less/.test(item.path)) {
-      eachFile(item);
+  walk(themeDir).on('file', function (item, stats) {
+    if(/\.less/.test(item)) {
+      eachFile({ path: item, stats:  stats});
       allItems.push(item);
     }
   }).on('end', function () {

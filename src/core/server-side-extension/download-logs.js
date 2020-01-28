@@ -18,6 +18,7 @@ module.exports = function(options, callback) {
   var logsFolder = path.join(_config.dir.server_side_root, 'logs');
   var loggingLevel = options.level || 'debug';
   var loggingDate = options.date || dateFormat(new Date(), 'yyyyMMdd');
+  var destinationFolder = options.destinationFolder || logsFolder;
 
   var downloadLogFile = function(callback) {
     var requestOptions = {
@@ -42,22 +43,22 @@ module.exports = function(options, callback) {
     winston.info('Extracting log files...');
     extract(
       tempFile,
-      { dir: logsFolder },
+      { dir: destinationFolder },
       function(err) {
         if (err) {
           callback('Error extracting the file: ' + err);
           return;
         }
 
-        glob('_?_' + loggingLevel + '.log', { cwd: logsFolder }, function(err, files) {
+        glob('_?_' + loggingLevel + '.log', { cwd: destinationFolder }, function(err, files) {
           if (err) {
             callback('Error renaming log file: ' + err);
             return;
           }
 
           async.each(files, function(fileName, callback) {
-            var originalLogFile = path.join(logsFolder, fileName);
-            var finalLogFile = path.join(logsFolder, + loggingDate + fileName);
+            var originalLogFile = path.join(destinationFolder, fileName);
+            var finalLogFile = path.join(destinationFolder, + loggingDate + fileName);
 
             fs.remove(finalLogFile, function(err) {
               if (err) {

@@ -15,8 +15,9 @@ var _config = require('../config');
 module.exports = function(name, options, callback) {
   var self = this;
   var tempFile = path.join(os.tmpdir(), 'sse-logs.zip');
-  var loggingLevel = options.level || 'debug';
   var logsFolder = path.join(_config.dir.server_side_root, 'logs');
+  var loggingLevel = options.level || 'debug';
+  var loggingDate = options.date || dateFormat(new Date(), 'yyyyMMdd');
 
   var downloadLogFile = function(callback) {
     if (name) {
@@ -31,7 +32,7 @@ module.exports = function(name, options, callback) {
       'qs': {
         'extensionName': name,
         'loggingLevel': loggingLevel,
-        'date': options.date
+        'date': loggingDate
       },
       download: tempFile
     };
@@ -60,15 +61,18 @@ module.exports = function(name, options, callback) {
             return;
           }
 
-          var loggingDate = options.date || dateFormat(new Date(), 'yyyyMMdd');
-
           async.each(files, function(fileName, callback) {
-            fs.move(
-              path.join(logsFolder, fileName),
-              path.join(logsFolder, + loggingDate + fileName),
-              { override: true },
-              callback
-            );
+            var originalLogFile = path.join(logsFolder, fileName);
+            var finalLogFile = path.join(logsFolder, + loggingDate + fileName);
+
+            fs.remove(finalLogFile, function(err) {
+              if (err) {
+                callback("Cannot remove previous log file." + err);
+                return;
+              }
+
+              fs.move(originalLogFile, finalLogFile, { override: true }, callback);
+            })
           }, callback);
         });
       }
@@ -77,7 +81,7 @@ module.exports = function(name, options, callback) {
 
   var clearTempFile = function(callback) {
     winston.info('Removing temporary files...');
-    fs.unlink(tempFile, callback);
+    fs.remove(tempFile, callback);
   };
 
   async.waterfall([downloadLogFile, extractLogFile, clearTempFile], callback);

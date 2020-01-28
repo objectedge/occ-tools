@@ -177,7 +177,7 @@ Download.prototype.do_sse_logs.options = [
   },
   {
     names: ['destinationFolder', 'f'],
-    helpArg: 'string',
+    helpArg: '[folder]',
     type: 'string',
     help: '(Optional) Place the downloaded logs on a specific folder. It defaults to the SSE root folder on the boilerplate.'
   }

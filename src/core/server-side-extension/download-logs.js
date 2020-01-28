@@ -12,7 +12,7 @@ var dateFormat = require('date-fns/format');
 
 var _config = require('../config');
 
-module.exports = function(name, options, callback) {
+module.exports = function(options, callback) {
   var self = this;
   var tempFile = path.join(os.tmpdir(), 'sse-logs.zip');
   var logsFolder = path.join(_config.dir.server_side_root, 'logs');
@@ -20,23 +20,17 @@ module.exports = function(name, options, callback) {
   var loggingDate = options.date || dateFormat(new Date(), 'yyyyMMdd');
 
   var downloadLogFile = function(callback) {
-    if (name) {
-      winston.info('Downloading logs for extension %s level %s for %s...', name, options.level, options.date || 'today');
-    } else {
-      winston.info('Downloading log level %s for %s...', options.level, options.date || 'today');
-    }
-
     var requestOptions = {
       'api': 'logs',
       'method': 'get',
       'qs': {
-        'extensionName': name,
         'loggingLevel': loggingLevel,
         'date': loggingDate
       },
       download: tempFile
     };
 
+    winston.info('Downloading extension server logs from %s (level: %s)...', options.date || 'today', loggingLevel);
     self._occ.request(requestOptions, function(error, body) {
       self._occ.checkError(error, body, callback);
 
@@ -81,8 +75,22 @@ module.exports = function(name, options, callback) {
 
   var clearTempFile = function(callback) {
     winston.info('Removing temporary files...');
-    fs.remove(tempFile, callback);
+    fs.remove(tempFile, function(err) {
+      if (err) {
+        callback('Cannot remove temp log file.' + err);
+        return;
+      }
+
+      callback();
+    });
   };
 
-  async.waterfall([downloadLogFile, extractLogFile, clearTempFile], callback);
+  async.waterfall([downloadLogFile, extractLogFile, clearTempFile], function(err) {
+    if (err) {
+      callback(err);
+    } else {
+      winston.info('Extension server logs downloaded successfully.');
+      callback();
+    }
+  });
 };

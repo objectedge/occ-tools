@@ -129,7 +129,6 @@ Download.prototype.do_search.help = 'Download a search app from OCC.\n\n' +
 '     {{name}} {{cmd}} <app>';
 
 Download.prototype.do_sse_logs = function(subcmd, opts, args, callback) {
-  var name = args[0];
   var allowedLevels = ['debug', 'info', 'warning', 'error'];
   var options = {
     'level': opts.level,
@@ -151,13 +150,13 @@ Download.prototype.do_sse_logs = function(subcmd, opts, args, callback) {
     return callback(error);
   });
 
-  sse.downloadLogs(name, options, callback);
+  sse.downloadLogs(options, callback);
 };
 
 Download.prototype.do_sse_logs.help = (
-  'Download the logs for a server-side extension from OCC.\n\n' +
+  'Download the logs from the extension server.\n\n' +
   'Usage:\n' +
-  '     {{name}} {{cmd}} <sse-name> [options] \n\n' +
+  '     {{name}} {{cmd}} [options] \n\n' +
   '{{options}}'
 );
 
@@ -172,7 +171,7 @@ Download.prototype.do_sse_logs.options = [{
   names: ['date', 'd'],
   helpArg: '[date]',
   type: 'string',
-  help: '(Optional) The date on format yyyyMMdd.'
+  help: '(Optional) Retrieve the logs from a specific date (format: yyyyMMdd).'
 }];
 
 Download.prototype.do_email = function(subcmd, opts, args, callback) {

@@ -2,6 +2,13 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.25] - 2019-12-10]
+### Added
+- Remove the sse-name parameter from the download sse logs command.
+- Add a path option to download sse-logs command.
+### Fixed
+- Change download sse-logs command to deal with a zip file instead of a JSON response.
+
 ## [2.0.0-beta.24] - 2019-12-10]
 ### Fixed
 - Fixing a typo on the SSE generation command

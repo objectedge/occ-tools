@@ -71,7 +71,7 @@ UserCommands.prototype.do_create = function(subcmd, opts, args, callback) {
       modulePackage.description = result.description;
       modulePackage.author = result.email;
 
-      fs.writeJson(packageJsonPath, modulePackage, function (error) {
+      fs.writeJson(packageJsonPath, modulePackage, { spaces: 2 }, function (error) {
         if (error) {
           return callback(error);
         }

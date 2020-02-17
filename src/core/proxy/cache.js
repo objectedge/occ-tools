@@ -103,14 +103,14 @@ Cache.prototype.set = function (id, data, headers, options) {
   }
 
   var writeCache = function (action) {
-    fs.writeJson(jsonCacheFile.path, cacheObject, callback);
+    fs.writeJson(jsonCacheFile.path, cacheObject, { spaces: 2 }, callback);
 
     if(options.saveAs === 'buffer') {
       var wstream = fs.createWriteStream(dataFile.path);
       wstream.write(data);
       wstream.end();
     } else if(options.saveAs === 'json') {
-      fs.writeJson(dataFile.path, data);
+      fs.writeJson(dataFile.path, data, { spaces: 2 });
     } else {
       fs.writeFile(dataFile.path, data, { encoding: 'utf8' });
     }
@@ -141,7 +141,7 @@ Cache.prototype.updateJSONFile = function (id, cacheObject, callback) {
   var filePath = this.fullFileCachePath(id);
 
   if(filePath.exists) {
-    fs.writeJson(filePath.path, cacheObject, function () {
+    fs.writeJson(filePath.path, cacheObject, { spaces: 2 }, function () {
       callback(null, 'done');
     });
     return true;
@@ -154,7 +154,7 @@ Cache.prototype.updateFileContent = function (id, content, callback) {
   callback = callback || function (){};
   var filePath = this.fullFileCachePath(id);
   var dataFile = this.fullFileCachePath(id, '.dat');
-  
+
   if(filePath.exists) {
     fs.writeFile(dataFile.path, content, function () {
       callback(null, 'done');
@@ -174,7 +174,7 @@ Cache.prototype.get = function (id, ignoreDisabled) {
   }
 
   var filePath = this.fullFileCachePath(id);
-  
+
   if(filePath.exists) {
     var jsonFile = fs.readJsonSync(filePath.path);
 
@@ -318,8 +318,8 @@ Cache.prototype.wipeCacheOnExit = function (wipe) {
 };
 
 Cache.prototype.onClose = function () {
-  winston.info("\n\n\n" + 
-              "##########################################################################\n" + 
+  winston.info("\n\n\n" +
+              "##########################################################################\n" +
               "#### Hey! Remember to upload your widgets to OCC if they're complete! ####\n" +
               "##########################################################################\n\n\n" );
 

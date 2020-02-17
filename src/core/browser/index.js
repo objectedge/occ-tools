@@ -78,10 +78,10 @@ function getConfigs(browsers, callback) {
 Browser.prototype.launch = function() {
   var self = this;
 
-  /* 
+  /*
   *  Function made to detect browser, using launcher.detect because it updates every time you install or unninstall browsers.
   *  This returns a json list, which we use to measure just the return size, since we cant return only filter object properties values.
-  *  
+  *
   *  CheckChromeInstalled returns and object list only if chrome is existent, because you cant filter one specific property from the returned list we just check the size.
   */
 
@@ -218,7 +218,7 @@ Browser.prototype.config = function() {
         }
 
         jsonContent.defaultBrowser = options.defaultBrowser;
-        fs.writeJSON(configsFile, jsonContent, function (error) {
+        fs.writeJSON(configsFile, jsonContent, { spaces: 2 }, function (error) {
           if(error) {
             return self.emit('error', 'Error on updating the config file');
           }

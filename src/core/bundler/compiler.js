@@ -178,20 +178,30 @@ Compiler.prototype.defineCompiler = function (done) {
       self.configs.externalsPattern
     ],
     module: {
-      loaders: [{
-        test: /\.js$/,
-        exclude: /node_modules/,
-        include: modulesInclude,
-        loader: 'babel-loader',
-        query: {
-          presets: [path.join(self.configs.occToolsModulesPath, 'babel-preset-es2015')],
-          plugins: [
-            path.join(self.configs.occToolsModulesPath, 'babel-plugin-transform-decorators-legacy'),
-            path.join(self.configs.occToolsModulesPath, 'babel-plugin-transform-class-properties')
-          ],
-          cacheDirectory: true
+      loaders: [
+        {
+          test: /\.js$/,
+          exclude: /node_modules/,
+          include: modulesInclude,
+          loader: 'babel-loader',
+          query: {
+            presets: [path.join(self.configs.occToolsModulesPath, 'babel-preset-es2015')],
+            plugins: [
+              path.join(self.configs.occToolsModulesPath, 'babel-plugin-transform-decorators-legacy'),
+              path.join(self.configs.occToolsModulesPath, 'babel-plugin-transform-class-properties')
+            ],
+            cacheDirectory: true
+          }
+        },
+        {
+          test: /\.html$/,
+          exclude: /node_modules/,
+          loader: 'html-loader',
+          query: {
+            minimize: false
+          }
         }
-      }]
+      ]
     },
     plugins: plugins
   };

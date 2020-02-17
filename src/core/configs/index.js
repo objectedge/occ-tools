@@ -31,7 +31,7 @@ function removeLoginToken(cb) {
 function Configs() { }
 
 function updateConfigs(configsJson, optionCommand, cb) {
-  fs.writeJson(configsFile, configsJson, function (error) {
+  fs.writeJson(configsFile, configsJson, { spaces: 2 }, function (error) {
     if (error) {
       winston.error(error);
       cb(error);

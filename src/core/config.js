@@ -15,6 +15,7 @@ var baseUrl = configsData.projects.current.url;
 var username = configsData.projects.current.credentials.username;
 var password = configsData.projects.current.credentials.password;
 var storefrontDir = configsData.projects['storefront-dir'];
+var absoluteStorefrontDir = path.join(configsData.projects.current.path, storefrontDir);
 
 var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : true;
 var loginCredentials = {
@@ -30,19 +31,49 @@ if(useMFALogin) {
 var tempRootFolder = path.join(os.tmpdir(), 'occ-tools-data');
 var mocksDirName = 'mocks';
 
+var instanceId = baseUrl.match(/ccadmin-(.*?)\./)[1];
+var instanceDefinitionsRootPath = path.join(configsData.projects.current.path, 'instances-definitions');
+var instanceIdPath = path.join(instanceDefinitionsRootPath, instanceId);
+
+var librariesDir = path.join(instanceIdPath, 'assets', 'libraries');
+var apiDir = path.join(instanceIdPath, 'api');
+
+var oracleDirName = 'default';
+var customDirName = 'custom';
+
+var instanceDefinitionsDir = {
+  root: instanceDefinitionsRootPath,
+  instanceIdPath: instanceIdPath,
+  layouts: path.join(instanceDefinitionsRootPath, instanceId, 'layouts'),
+  widgets: path.join(instanceDefinitionsRootPath, instanceId, 'widgets'),
+
+  libs: librariesDir,
+  oracleLibsDirName: oracleDirName,
+  customLibsDirName: customDirName,
+  oracleLibs: path.join(librariesDir, oracleDirName),
+  customLibs: path.join(librariesDir, customDirName),
+
+  api: apiDir,
+  oracleApiDirName: oracleDirName,
+  customApiDirName: customDirName,
+  oracleApi: path.join(apiDir, oracleDirName),
+  customApi: path.join(apiDir, customDirName)
+};
+
 var _configDescriptor = {
   project_name: configsData.projects.current.name,
   configsDir: configsDir,
   configsFilePath: configsFilePath,
   mocksDirName: mocksDirName,
+  instanceId: instanceId,
   dir: {
     project_base: path.join(configsData.projects.current.path),
-    project_root: path.join(configsData.projects.current.path, storefrontDir),
+    project_root: absoluteStorefrontDir,
     search_root: path.join(configsData.projects.current.path, 'search'),
     server_side_root: path.join(configsData.projects.current.path, 'server-side-extensions'),
     storefront_dir_name: storefrontDir,
-    mocks: path.join(configsData.projects.current.path, storefrontDir, mocksDirName),
-    instanceDefinitions: path.join(configsData.projects.current.path, 'instances-definitions')
+    mocks: path.join(absoluteStorefrontDir, mocksDirName),
+    instanceDefinitions: instanceDefinitionsDir
   },
   theme: {
     name: configsData.projects.current.theme.name,

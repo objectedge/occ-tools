@@ -66,4 +66,82 @@ Instance.prototype.do_grab_widgets.help = (
   'Grab all widgets.\n\n'
 );
 
+Instance.prototype.do_grab_libs = function(subcmd, opts, args, callback) {
+  login(function(error) {
+    if (error) {
+      return callback(error);
+    }
+
+    var instance = new InstanceCmd('admin');
+
+    instance.on('complete', function(msg) {
+      winston.info(msg);
+      return callback();
+    });
+
+    instance.on('error', function(err) {
+      return callback(err);
+    });
+
+    instance.grabLibs();
+  });
+};
+
+
+Instance.prototype.do_grab_libs.help = (
+  'Grab all libraries from OCC.\n\n'
+);
+
+Instance.prototype.do_grab_api_schema = function(subcmd, opts, args, callback) {
+  login(function(error) {
+    if (error) {
+      return callback(error);
+    }
+
+    var instance = new InstanceCmd('admin');
+
+    instance.on('complete', function(msg) {
+      winston.info(msg);
+      return callback();
+    });
+
+    instance.on('error', function(err) {
+      return callback(err);
+    });
+
+    instance.grabApiSchema();
+  });
+};
+
+
+Instance.prototype.do_grab_api_schema.help = (
+  'Grab API Schema from OCC.\n\n'
+);
+
+Instance.prototype.do_grab_pages_response = function(subcmd, opts, args, callback) {
+  login(function(error) {
+    if (error) {
+      return callback(error);
+    }
+
+    var instance = new InstanceCmd('admin');
+
+    instance.on('complete', function(msg) {
+      winston.info(msg);
+      return callback();
+    });
+
+    instance.on('error', function(err) {
+      return callback(err);
+    });
+
+    instance.grabPagesResponse();
+  });
+};
+
+
+Instance.prototype.do_grab_pages_response.help = (
+  'Grab Pages Response from OCC.\n\n'
+);
+
 module.exports = Instance;

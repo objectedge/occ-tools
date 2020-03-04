@@ -3,12 +3,11 @@ const path = require('path');
 const fs = require('fs-extra');
 const winston = require('winston');
 const promisify = require('util').promisify;
-const instancesConfig = require('./instances-config');
+const config = require('../config');
 
 class Layout {
   constructor(options, coreInstance) {
     this.options = options;
-    this.instancesConfig = instancesConfig();
     this.occ = coreInstance._occ;
     this.request = promisify(coreInstance._occ.request.bind(coreInstance._occ));
   }
@@ -20,7 +19,7 @@ class Layout {
       }
 
       try {
-        const pagesPath = path.join(this.instancesConfig.definitionsPaths.layouts, pageDefinition.shortName);
+        const pagesPath = path.join(config.dir.instanceDefinitions.layouts, pageDefinition.shortName);
         const pageTypeJSONFile = path.join(pagesPath, 'pageType.json');
         const pageLayoutsPath = path.join(pagesPath, 'layouts');
 

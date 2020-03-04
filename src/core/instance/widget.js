@@ -3,12 +3,11 @@ const path = require('path');
 const fs = require('fs-extra');
 const winston = require('winston');
 const promisify = require('util').promisify;
-const instancesConfig = require('./instances-config');
+const config = require('../config');
 
 class Widget {
   constructor(options, coreInstance) {
     this.options = options;
-    this.instancesConfig = instancesConfig();
     this.occ = coreInstance._occ;
     this.request = promisify(coreInstance._occ.request.bind(coreInstance._occ));
   }
@@ -18,7 +17,7 @@ class Widget {
       try {
         const widgetsList = (await this.getAllWidgets()).items;
         const totalWidgets = widgetsList.length;
-        const widgetsPath = this.instancesConfig.definitionsPaths.widgets;
+        const widgetsPath = config.dir.instanceDefinitions.widgets;
 
         let count = 0;
         for(let widgetDetail of widgetsList) {

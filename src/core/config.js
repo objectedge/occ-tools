@@ -32,18 +32,16 @@ var tempRootFolder = path.join(os.tmpdir(), 'occ-tools-data');
 var mocksDirName = 'mocks';
 
 var instanceId = baseUrl.match(/ccadmin-(.*?)\./)[1];
-var instanceDefinitionsRootPath = path.join(configsData.projects.current.path, 'instances-definitions');
-var instanceIdPath = path.join(instanceDefinitionsRootPath, instanceId);
-
-var librariesDir = path.join(instanceIdPath, 'assets', 'libraries');
-var apiDir = path.join(instanceIdPath, 'api');
+var instanceDefinitionsRootPath = path.join(configsData.projects.current.path, 'oracle-resources');
+var librariesDir = path.join(instanceDefinitionsRootPath, 'assets', 'libraries');
+var apiDir = path.join(instanceDefinitionsRootPath, 'api');
 
 var oracleDirName = 'default';
 var customDirName = 'custom';
 
 var instanceDefinitionsDir = {
   root: instanceDefinitionsRootPath,
-  instanceIdPath: instanceIdPath,
+  instanceIdPath: path.join(instanceDefinitionsRootPath, instanceId),
   layouts: path.join(instanceDefinitionsRootPath, instanceId, 'layouts'),
   widgets: path.join(instanceDefinitionsRootPath, instanceId, 'widgets'),
 
@@ -66,6 +64,16 @@ var _configDescriptor = {
   configsFilePath: configsFilePath,
   mocksDirName: mocksDirName,
   instanceId: instanceId,
+  localServer: {
+    api: {
+      port: 3000,
+      domain: 'http://localhost'
+    },
+    karma: {
+      port: 9876,
+      urlRoot: '/app'
+    } 
+  },
   dir: {
     project_base: path.join(configsData.projects.current.path),
     project_root: absoluteStorefrontDir,

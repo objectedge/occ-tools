@@ -16,7 +16,7 @@ const pagesDataEndpoints = {
   layout: `${baseUrl}/ccstoreui/v1/pages/layout/%s?ccvp=lg`
 };
 
-const apiPath = config.dir.instanceDefinitions.api;
+const apiPath = config.dir.instanceDefinitions.oracleApi;
 const responsesPath = path.join(apiPath, 'responses');
 const pagesPath = path.join(responsesPath, 'getPage');
 const layoutsPath = path.join(responsesPath, 'getLayout');

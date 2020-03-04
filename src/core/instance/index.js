@@ -8,6 +8,7 @@ var _widget = require('./widget');
 var _libraries = require('./libraries');
 var _apiSchema = require('./api-schema');
 var _pagesResponse = require('./pages-response');
+var _localServer = require('./local-server');
 
 function Instance(environment, options) {
   if (!environment) {
@@ -70,6 +71,17 @@ Instance.prototype.grabApiSchema = function(options) {
 Instance.prototype.grabPagesResponse = function(options) {
   var self = this;
   _pagesResponse.call(self, 'grab', options, function(error) {
+    if (error) {
+      self.emit('error', error);
+    } else {
+      self.emit('complete', 'Grab Pages Response Completed!');
+    }
+  });
+};
+
+Instance.prototype.runLocalServer = function(options) {
+  var self = this;
+  _localServer.call(self, 'run', options, function(error) {
     if (error) {
       self.emit('error', error);
     } else {

@@ -144,4 +144,30 @@ Instance.prototype.do_grab_pages_response.help = (
   'Grab Pages Response from OCC.\n\n'
 );
 
+Instance.prototype.do_local_server = function(subcmd, opts, args, callback) {
+  login(function(error) {
+    if (error) {
+      return callback(error);
+    }
+
+    var instance = new InstanceCmd('admin');
+
+    instance.on('complete', function(msg) {
+      winston.info(msg);
+      return callback();
+    });
+
+    instance.on('error', function(err) {
+      return callback(err);
+    });
+
+    instance.runLocalServer();
+  });
+};
+
+
+Instance.prototype.do_local_server.help = (
+  'Run Local Server using the instance local assets and apis.\n\n'
+);
+
 module.exports = Instance;

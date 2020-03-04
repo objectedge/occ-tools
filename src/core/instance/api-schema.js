@@ -4,10 +4,10 @@ const winston = require('winston');
 const request = require('request');
 const config = require('../config');
 
-const apiPath = config.dir.instanceDefinitions.api;
+const apiPath = config.dir.instanceDefinitions.oracleApi;
 const responsesPath = path.join(apiPath, 'responses');
 const definitionsPath = path.join(apiPath, 'definitions');
-const webMIMETypes = fs.readJsonSync(path.join(__dirname, 'webMIMETypes.json'));
+const webMIMETypes = fs.readJsonSync(path.join(__dirname, 'local-server', 'webMIMETypes.json'));
 
 const schemaPath = path.join(apiPath, 'schema.json');
 const schemaURL = `${config.endpoints.baseUrl}/ccstore/v1/metadata-catalog`;
@@ -66,7 +66,7 @@ class ApiSchema {
             const responseMethodPath = path.join(responsesPath, `${requestId}`);
 
             fs.ensureDirSync(responseMethodPath);
-
+            
             for(const statusCode of Object.keys(responses)) {
               // Don't create structure for the default
               if(statusCode === 'default') {

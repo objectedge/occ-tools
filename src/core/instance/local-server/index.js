@@ -194,6 +194,14 @@ class LocalServer {
                 next();
               };
 
+              if(/\/pages\/:path/.test(requestEndpoint)) {
+                return;
+              }
+
+              if(/\/layout\/:path/.test(requestEndpoint)) {
+                return;
+              }
+
               app[requestDefinition.method](`*${requestEndpoint}`, middleware, (req, res) => {
                 res.header("OperationId", requestData.operationId);
 
@@ -263,7 +271,7 @@ class LocalServer {
       }
     });
 
-    app.get('/occ-app', async function(req, res) {
+    app.use(async function(req, res) {
       try {
         let htmlText = await fs.readFile(path.join(__dirname + '/index.html'), 'utf8');
         res.send(htmlText);
@@ -274,7 +282,7 @@ class LocalServer {
     });
 
     console.log('Starting api server...');
-
+    
     return new Promise(() => {
       app.listen(port, () => {
         console.log(`Running api server on port ${port}`);

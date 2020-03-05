@@ -219,69 +219,13 @@
         <span data-bind="text: networkErrorMessage"></span>
         <u><a data-bind="text: networkErrorReloadText" href="javascript:location.reload(true);"></a></u>
     </script>
-    <script type="text/javascript" src="{{requireJsPath}}" crossorigin="anonymous"></script>
-    <script type="text/javascript" src="{{mainJsPath}}" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="/occ-tools-configs.js" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="/js/main.js" crossorigin="anonymous"></script>
+
     <script>
       (function () {
-        var mainConfigs = {{occ-dev-server-configs}};
-        var customFiles = {{occ-dev-server-custom-files}};
-        var customLibsDir = mainConfigs.application.customLibsDir;
-        var oracleLibsDir = mainConfigs.application.oracleLibsDir;
-        var absoloutePathToFiles = `${mainConfigs.server.karma.urlRoot}/absolute`;
-        var absoloutePathOracleLibs = `${absoloutePathToFiles}${oracleLibsDir}`;
-        var absoloutePathCustomLibs = `${absoloutePathToFiles}${customLibsDir}`;
-        var requireJSConfigs = require.s.contexts._.config;
 
-        // Setting the right path
-        var stringifiedConfigs = JSON.stringify(requireJSConfigs);
-
-        stringifiedConfigs = stringifiedConfigs.replace(/"\/shared\//g, `"${absoloutePathOracleLibs}/shared/`);
-        stringifiedConfigs = stringifiedConfigs.replace(/"\/js\//g, `"${absoloutePathOracleLibs}/js/`);
-        requireJSConfigs = JSON.parse(stringifiedConfigs);
-
-        function replaceSetCustomFilesPaths() {
-          var paths = requireJSConfigs.paths;
-          var pathKey;
-          var path;
-          var fullPathToCustomFile;
-
-          for(pathKey in paths) {
-            path = paths[pathKey];
-            // Don't deal with arrays as dependency. e.g: facebook
-            if(Array.isArray(path)) {
-              continue;
-            }
-
-            fullPathToCustomFile = path.replace(absoloutePathOracleLibs, absoloutePathCustomLibs) + '.js';
-
-            if(customFiles.includes(fullPathToCustomFile)) {
-              paths[pathKey] = fullPathToCustomFile.replace('.js', '');
-              customFiles.splice(customFiles.indexOf(fullPathToCustomFile), 1);
-            }
-          }
-
-          // Remaining items, these are probably files from dynamic paths like /pageLayout/site.js
-          // TODO:
-          // Improve the custom dynamic js path and its checking
-          if(customFiles.length) {
-            customFiles.forEach(customPath => {
-              paths[customPath.replace(/.*?(shared|js)?js\//, '').replace('.js', '')] = customPath.replace('.js', '');
-            });
-          }
-        }
-
-        if(customFiles.length) {
-          customFiles.forEach((filePath, index) => {
-            customFiles[index] = `${absoloutePathToFiles}${filePath}`;
-          });
-          replaceSetCustomFilesPaths();
-        }
-
-        requireJSConfigs.baseUrl = absoloutePathToFiles;
-        window.defaultRoute = mainConfigs.page;
-
-        require.config(requireJSConfigs);
-        require(['mainOccLoader']);
       }());
 </script>
 </body>

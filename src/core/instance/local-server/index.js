@@ -4,12 +4,21 @@ const winston = require('winston');
 const express = require('express');
 const glob = require('glob');
 const bodyParser = require('body-parser');
+const hoxy = require('hoxy');
 const config = require('../../config');
 
 class LocalServer {
   run() {
     const app = express();
     const port = config.localServer.api.port;
+
+    this.proxy = hoxy.createServer({
+      reverse: config.endpoints.store
+    }).listen(8080);
+
+    this.proxy.intercept('response', (req, resp) => {
+      resp.headers['Access-Control-Allow-Origin'] = '*';
+    });
 
     const customApiDir = config.dir.instanceDefinitions.customApi;
     const oracleApiDir = config.dir.instanceDefinitions.oracleApi;
@@ -238,21 +247,11 @@ class LocalServer {
       res.json({ error: true, message: `The mock "${fullPathToMock}" doesn't exist` });
     });
 
-    // app.get('/occ-app', function(req, res) {
-    //   let htmlText = fs.readFileSync(path.join(__dirname + '/index.html'), 'utf8');
-    //   htmlText = htmlText.replace(/\{\{occ-dev-server-configs\}\}/, JSON.stringify(config));
-    //   htmlText = htmlText.replace(/\{\{occ-dev-server-custom-files\}\}/, JSON.stringify(glob.sync(path.join(config.dir.instanceDefinitions.customLibs, '**', '*.js'))));
-    //   const requireJsPath = path.join(require.resolve('requirejs'), '..', '..', 'require.js');
-    //   htmlText = htmlText.replace(/\{\{requireJsPath\}\}/, `${config.localServer.karma.urlRoot}/absolute${requireJsPath}`);
-    //   htmlText = htmlText.replace(/\{\{mainJsPath\}\}/, `${config.localServer.karma.urlRoot}/absolute${config.dir.instanceDefinitions.customLibs}/main.js`);
-    //   res.send(htmlText);
-    // });
-
-    app.get('/occ-tools-configs.js', async function(req, res) {
+    app.get('/occ-tools-configs.js', async (req, res) => {
       res.send(`window.mainConfigs = ${JSON.stringify(config)}`);
     });
 
-    app.get(['/js/:asset(*)', '/shared/:asset(*)'], async function(req, res) {
+    app.get(['/js/:asset(*)', '/shared/:asset(*)'], async (req, res) => {
       let oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, req.originalUrl);
       let customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, req.originalUrl);
 
@@ -278,7 +277,7 @@ class LocalServer {
       }
     });
 
-    app.get('/oe-files/:file(*)', async function(req, res) {
+    app.get('/oe-files/:file(*)', async (req, res) => {
       const fileName = path.basename(req.params.file);
 
       try {
@@ -296,7 +295,7 @@ class LocalServer {
       }
     });
 
-    app.use(async function(req, res) {
+    app.use(async (req, res) => {
       try {
         let htmlText = await fs.readFile(path.join(__dirname + '/index.html'), 'utf8');
         res.send(htmlText);

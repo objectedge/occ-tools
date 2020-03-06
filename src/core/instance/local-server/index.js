@@ -28,7 +28,7 @@ class LocalServer {
     try {
       customResponses = fs.readdirSync(customResponsesPath);
     } catch(error) {
-      console.log(`It was able to find any custom-response... using the default one`);
+      console.log(`It was not able to find any custom-response... using the default one`);
     }
 
     let schemaPaths = schema.paths;
@@ -194,11 +194,7 @@ class LocalServer {
                 next();
               };
 
-              if(/\/pages\/:path/.test(requestEndpoint)) {
-                return;
-              }
-
-              if(/\/layout\/:path/.test(requestEndpoint)) {
+              if(/:id|:path/.test(requestEndpoint)) {
                 return;
               }
 
@@ -258,13 +254,42 @@ class LocalServer {
 
     app.get(['/js/:asset(*)', '/shared/:asset(*)'], async function(req, res) {
       let oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, req.originalUrl);
+      let customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, req.originalUrl);
 
       if(/main\.js/.test(req.params.asset)) {
         oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, 'main.js');
+        customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, 'main.js');
       }
 
       try {
-        res.send(await fs.readFile(oracleAssetsPath));
+        if(fs.existsSync(customAssetsPath)) {
+          return res.send(await fs.readFile(customAssetsPath));
+        }
+
+        if(fs.existsSync(oracleAssetsPath)) {
+          return res.send(await fs.readFile(oracleAssetsPath));
+        }
+
+        res.status(404);
+        res.send('File Not Found');
+      } catch(error) {
+        res.status(500);
+        res.send(error);
+      }
+    });
+
+    app.get('/oe-files/:file(*)', async function(req, res) {
+      const fileName = path.basename(req.params.file);
+
+      try {
+        const foundFile = glob.sync(path.join(config.dir.project_root, 'files', '**', fileName));
+
+        if(foundFile.length) {
+          return res.send(await fs.readFile(foundFile[0]));
+        }
+
+        res.status(404);
+        res.send('File Not Found');
       } catch(error) {
         res.status(500);
         res.send(error);
@@ -282,7 +307,7 @@ class LocalServer {
     });
 
     console.log('Starting api server...');
-    
+
     return new Promise(() => {
       app.listen(port, () => {
         console.log(`Running api server on port ${port}`);

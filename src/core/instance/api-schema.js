@@ -11,6 +11,7 @@ const webMIMETypes = fs.readJsonSync(path.join(__dirname, 'local-server', 'webMI
 
 const schemaPath = path.join(apiPath, 'schema.json');
 const schemaURL = `${config.endpoints.baseUrl}/ccstore/v1/metadata-catalog`;
+const registryEndpoint = `${config.endpoints.store}/ccstoreui/v1/registry`;
 
 class ApiSchema {
   makeRequest(url) {
@@ -46,13 +47,58 @@ class ApiSchema {
 
       try {
         const schemaRequestResponse = await this.makeRequest(schemaURL);
+        const registryRequestResponse = await this.makeRequest(registryEndpoint);
+
         const schemaJSON = JSON.parse(schemaRequestResponse.body);
+        const registryJSON = JSON.parse(registryRequestResponse.body);
+        const endpointMap = registryJSON.endpointMap;
         const schemaPaths = schemaJSON.paths;
 
         winston.info('Updating schema...');
 
         if(!/ui/.test(schemaJSON.basePath)) {
           schemaJSON.basePath = schemaJSON.basePath.replace('ccadmin', 'ccadminui').replace('ccstore', 'ccstoreui');
+        }
+
+        const operationsIds = [];
+
+        for(const requestPathKey of Object.keys(schemaPaths)) {
+          for(const method of Object.keys(schemaPaths[requestPathKey])) {
+            operationsIds.push(schemaPaths[requestPathKey][method].operationId);
+          }
+        }
+
+        // Setting missing endpoints(Not available in the metadata-catalog)
+        for(const endpointMapKey of Object.keys(endpointMap)) {
+          const endpointMapData = endpointMap[endpointMapKey];
+
+          if(!operationsIds.includes(endpointMapKey)) {
+            const method = endpointMapData.method.toLowerCase();
+            let sampleResponse = {};
+            let endpointMapResponse;
+
+            try {
+              if(method === 'get' && !/\{\}/.test(endpointMapData.url)) {
+                endpointMapResponse = await this.makeRequest(`${config.endpoints.store}${endpointMapData.url}`);
+                sampleResponse = JSON.parse(endpointMapResponse.body);
+              }
+            } catch(error) {}
+
+            schemaPaths[endpointMapData.url.replace('/ccstoreui/v1', '')] = {
+              [method]: {
+                summary: endpointMapData.id,
+                operationId: endpointMapData.id,
+                produces: ['application/json'],
+                responses: {
+                  "200": {
+                    "examples": {
+                      "application/json": sampleResponse
+                    }
+                  }
+                }
+              }
+            };
+          }
         }
 
         // Setting paths
@@ -66,7 +112,7 @@ class ApiSchema {
             const responseMethodPath = path.join(responsesPath, `${requestId}`);
 
             fs.ensureDirSync(responseMethodPath);
-            
+
             for(const statusCode of Object.keys(responses)) {
               // Don't create structure for the default
               if(statusCode === 'default') {
@@ -94,28 +140,36 @@ class ApiSchema {
 
               await fs.ensureDir(responsePath);
 
-              if(responses[statusCode].examples) {
-                let contentTypeList = Object.keys(responses[statusCode].examples);
-                const foundValidMIMEType = contentTypeList.some(mimeType => webMIMETypes.includes(mimeType));
+              if(!responses[statusCode].examples) {
+                responses[statusCode].examples = {
+                  "application/json": { sample: true }
+                };
+              }
 
-                // If didn't find any valid mime type, consider it as application/json
-                if(!foundValidMIMEType) {
-                  contentTypeList = ['application/json'];
+              let contentTypeList = Object.keys(responses[statusCode].examples);
+              const foundValidMIMEType = contentTypeList.some(mimeType => webMIMETypes.includes(mimeType));
+
+              // If didn't find any valid mime type, consider it as application/json
+              if(!foundValidMIMEType) {
+                contentTypeList = ['application/json'];
+              }
+
+              let contentType = contentTypeList[0];
+              let responseData = responses[statusCode].examples[contentType];
+
+              if(responseData) {
+                if(requestId === 'getRegistry') {
+                  responseData = registryJSON;
                 }
 
-                let contentType = contentTypeList[0];
-                const responseData = responses[statusCode].examples[contentType];
+                descriptor.response.headers['content-type'] = contentType;
+                let stringifiedResponseData = JSON.stringify(responseData, null, 2);
 
-                if(responseData) {
-                  descriptor.response.headers['content-type'] = contentType;
-                  let stringifiedResponseData = JSON.stringify(responseData, null, 2);
-
-                  if(stringifiedResponseData) {
-                    // stringifiedResponseData = stringifiedResponseData.replace(/localhost:[0-9]+?\//g, `localhost:${configs.server.karma.port}/`).replace(/"httpPort":\s[0-9]+?,/g, `"httpPort": ${configs.server.karma.port},`);
-                  }
-
-                  await fs.outputJSON(dataPath, JSON.parse(stringifiedResponseData), { spaces: 2 });
+                if(stringifiedResponseData) {
+                  // stringifiedResponseData = stringifiedResponseData.replace(/localhost:[0-9]+?\//g, `localhost:${configs.server.karma.port}/`).replace(/"httpPort":\s[0-9]+?,/g, `"httpPort": ${configs.server.karma.port},`);
                 }
+
+                await fs.outputJSON(dataPath, JSON.parse(stringifiedResponseData), { spaces: 2 });
               }
 
               await fs.outputJSON(dataDescriptorPath, descriptor, { spaces: 2 });

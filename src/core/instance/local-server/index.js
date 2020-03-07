@@ -2,23 +2,21 @@ const fs = require('fs-extra');
 const path = require('path');
 const winston = require('winston');
 const express = require('express');
+const request = require('request');
 const glob = require('glob');
 const bodyParser = require('body-parser');
-const hoxy = require('hoxy');
 const config = require('../../config');
 
 class LocalServer {
+
+  proxyRequest(req, res, originalPath) {
+    const url = `${config.endpoints.store}/${originalPath}`;
+    req.pipe(request(url)).pipe(res);
+  }
+
   run() {
     const app = express();
     const port = config.localServer.api.port;
-
-    this.proxy = hoxy.createServer({
-      reverse: config.endpoints.store
-    }).listen(8080);
-
-    this.proxy.intercept('response', (req, resp) => {
-      resp.headers['Access-Control-Allow-Origin'] = '*';
-    });
 
     const customApiDir = config.dir.instanceDefinitions.customApi;
     const oracleApiDir = config.dir.instanceDefinitions.oracleApi;
@@ -232,6 +230,10 @@ class LocalServer {
       }
     }
 
+    app.use('/proxy/:path(*)', (req, res) => {
+      this.proxyRequest(req, res, req.params.path);
+    });
+
     app.get('/mock', (req, res) => {
       const mockQueryParamPath = req.query.path;
 
@@ -245,10 +247,6 @@ class LocalServer {
       }
 
       res.json({ error: true, message: `The mock "${fullPathToMock}" doesn't exist` });
-    });
-
-    app.get('/occ-tools-configs.js', async (req, res) => {
-      res.send(`window.mainConfigs = ${JSON.stringify(config)}`);
     });
 
     app.get(['/js/:asset(*)', '/shared/:asset(*)'], async (req, res) => {
@@ -296,6 +294,10 @@ class LocalServer {
     });
 
     app.use(async (req, res) => {
+      if(/(\/file\/general)/.test(req.originalUrl)) {
+        return this.proxyRequest(req, res, req.originalUrl);
+      }
+
       try {
         let htmlText = await fs.readFile(path.join(__dirname + '/index.html'), 'utf8');
         res.send(htmlText);

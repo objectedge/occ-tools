@@ -10,12 +10,13 @@ let oracleJetVersionDefault = '2.0.2'; //Defaults to 2.0.2, we will double check
 let oracleJetVersion = null;
 
 const oracleLibsDir = path.join(config.dir.instanceDefinitions.oracleLibs);
-const url = config.endpoints.store;
 // const httpAuth = "Basic " + new Buffer('admin:admin').toString("base64");
 const allDependencies = [];
 
 class Libraries {
-  constructor() {
+  constructor(options, instance) {
+    this.options = options;
+    this.instanceOptions = instance.options;
     this.oracleJet = new OracleJet();
   }
 
@@ -25,12 +26,12 @@ class Libraries {
 
       try {
         console.log('Requesting the main page to get the main.js.map file...');
-        mainJSRequest = await this.makeRequest(url);
+        mainJSRequest = await this.makeRequest(this.instanceOptions.domain);
       } catch(error) {
         return reject(error);
       }
 
-      let regexPattern = new RegExp(`${url}.*main\.js`, 'g');
+      let regexPattern = new RegExp(`${this.instanceOptions.domain}.*main\.js`, 'g');
       let mainJSFilePath = mainJSRequest.body.match(regexPattern);
 
       if(!mainJSFilePath) {
@@ -135,7 +136,7 @@ class Libraries {
           return;
         }
 
-        const missingFileURL = `${url}${missingDependencyPath}.js`;
+        const missingFileURL = `${this.instanceOptions.domain}${missingDependencyPath}.js`;
         filesRequestsPromises.push(
           new Promise(async (resolve, reject) => {
             try {
@@ -174,12 +175,12 @@ class Libraries {
       let storeLibsRequest;
 
       try {
-        storeLibsRequest = await this.makeRequest(url);
+        storeLibsRequest = await this.makeRequest(this.instanceOptions.domain);
       } catch(error) {
         return reject(error);
       }
 
-      let regexPattern = new RegExp(`${url}.*store-libs\.js`, 'g');
+      let regexPattern = new RegExp(`${this.instanceOptions.domain}.*store-libs\.js`, 'g');
       let mainJSFilePath = storeLibsRequest.body.match(regexPattern);
 
       if(!mainJSFilePath) {

@@ -1,20 +1,68 @@
 const fs = require('fs-extra');
 const path = require('path');
 const winston = require('winston');
+const https = require('https');
 const express = require('express');
 const request = require('request');
 const glob = require('glob');
 const bodyParser = require('body-parser');
+const hostile = require('hostile');
+const url = require('url');
+const exitHook = require("async-exit-hook");
 const config = require('../../config');
+const devcert = require('devcert');
+const endpointsMapping = [];
 
 class LocalServer {
+  constructor(options, instance) {
+    this.options = options;
+    this.instanceOptions = instance.options;
+    this.hostname = url.parse(this.instanceOptions.domain).hostname;
+  }
+
+  setHosts() {
+    winston.info(`Setting the domain ${this.hostname} in the hosts...`);
+
+    return new Promise((resolve, reject) => {
+      hostile.set('127.0.0.1', this.hostname, (error) => {
+        if (error) {
+          return reject(error);
+        }
+
+        resolve();
+      });
+    });
+  }
+
+  unsetHosts() {
+    winston.info(`Unsetting the domain ${this.hostname} in the hosts...`);
+
+    return new Promise((resolve, reject) => {
+      hostile.remove('127.0.0.1', this.hostname, (error) => {
+        if (error) {
+          return reject(error);
+        }
+
+        resolve();
+      });
+    });
+  }
 
   proxyRequest(req, res, originalPath) {
     const url = `${config.endpoints.store}/${originalPath}`;
     req.pipe(request(url)).pipe(res);
   }
 
-  run() {
+  async run() {
+    try {
+      await this.setHosts();
+      winston.info(`Hosts set!`);
+    } catch(error) {
+      winston.error(error);
+    }
+
+    const ssl = await devcert.certificateFor(this.hostname, { skipHostsFile: true });
+
     const app = express();
     const port = config.localServer.api.port;
 
@@ -35,7 +83,7 @@ class LocalServer {
     try {
       customResponses = fs.readdirSync(customResponsesPath);
     } catch(error) {
-      console.log(`It was not able to find any custom-response... using the default one`);
+      winston.info(`It was not able to find any custom-response... using the default one`);
     }
 
     let schemaPaths = schema.paths;
@@ -49,7 +97,7 @@ class LocalServer {
           delete schemaPaths[customSchemaPath];
         }
 
-        console.log(`Using custom schema path for ${customSchemaPath}...`);
+        winston.info(`Using custom schema path for ${customSchemaPath}...`);
       });
 
       schemaPaths = Object.assign(schemaPaths, customSchemaPaths);
@@ -71,7 +119,7 @@ class LocalServer {
           // Only replaces the response path if it contains a custom schema, otherwise just replace the response path
           if(Object.keys(customSchema.paths).includes(requestPath) && customResponses.includes(requestData.operationId)) {
             responsePath = path.join(customResponsesPath, requestData.operationId);
-            console.log(`Using custom schema response for ${requestData.operationId}...`);
+            winston.info(`Using custom schema response for ${requestData.operationId}...`);
           } else if(!Object.keys(customSchema.paths).includes(requestPath) && customResponses.includes(requestData.operationId)) {
             customRequestsDefinitionPath = path.join(customResponsesPath, requestData.operationId);
           }
@@ -116,14 +164,14 @@ class LocalServer {
             try {
               descriptor = fs.readJsonSync(definitionPath);
             } catch(error) {
-              console.log(`Warning: There is no valid descriptor for the request "${requestData.operationId}"`);
+              winston.info(`Warning: There is no valid descriptor for the request "${requestData.operationId}"`);
             }
 
             try {
               const responseDataPath = path.join(definitionPath, '..', descriptor.response.dataPath);
               const requestDefinition = descriptor.request;
               const responseDefinition = descriptor.response;
-              let requestEndpoint = `${schema.basePath}${requestPath.replace('{id}', ':id').replace('{path: .*}', ':path')}`;
+              let requestEndpoint = `${schema.basePath}${requestPath.replace('{id}', ':id').replace('{path: .*}', ':path').replace('{}', ':path').replace('{bundle}', ':bundle')}`;
 
               if(requestDefinition.queryParameters) {
                 Object.keys(requestDefinition.queryParameters).forEach(queryParamKey => {
@@ -176,6 +224,12 @@ class LocalServer {
                 const hasBody = Object.keys(requestDefinition.body).length; // Check with Object.keys even if it's an object
                 const body = requestDefinition.body;
 
+                // Workaround to set the sync argument in all endpoints
+                if(req.query.syncRemote) {
+                  req.__syncRemote = req.query.syncRemote;
+                  delete req.query.syncRemote;
+                }
+
                 if(!hasQueryParameters && !hasHeaders && !hasBody) {
                   return next();
                 }
@@ -205,7 +259,13 @@ class LocalServer {
                 return;
               }
 
-              app[requestDefinition.method](`*${requestEndpoint}`, middleware, (req, res) => {
+              endpointsMapping.push({
+                method: requestDefinition.method,
+                path: `*${requestEndpoint}`,
+                data: requestData
+              });
+
+              app[requestDefinition.method](`*${requestEndpoint}`, middleware, async (req, res) => {
                 res.header("OperationId", requestData.operationId);
 
                 Object.keys(responseDefinition).forEach(requestOption => {
@@ -218,17 +278,43 @@ class LocalServer {
                   }
                 });
 
-                res.send(fs.readFileSync(responseDataPath, 'utf8'));
+                if(/\/css\//.test(req.originalUrl)) {
+                  res.type('css');
+                }
+
+                const syncArgument = req.__syncRemote;
+                if(syncArgument) {
+                  delete req.__syncRemote;
+                  request(`${config.endpoints.store}/${req.originalUrl}`, async (error, response, body) => {
+                    if(error) {
+                      res.status(500);
+                      res.send(error.message);
+                      return;
+                    }
+
+                    await fs.outputJSON(responseDataPath, JSON.parse(body), { spaces: 2 });
+                    winston.log(`${req.originalUrl} synced!`);
+                    res.send(await fs.readFile(responseDataPath, 'utf8'));
+                  });
+
+                  return;
+                }
+
+                res.send(await fs.readFile(responseDataPath, 'utf8'));
               });
             } catch(error) {
-              console.log(`Warning: There is no valid response for the request "${requestData.operationId}"`);
+              winston.info(`Warning: There is no valid response for the request "${requestData.operationId}"`);
             }
           });
         } catch(error) {
-          console.log(error);
+          winston.info(error);
         }
       }
     }
+
+    app.get('/occ-server-details', (req, res) => {
+      res.json(endpointsMapping);
+    });
 
     app.use('/proxy/:path(*)', (req, res) => {
       this.proxyRequest(req, res, req.params.path);
@@ -293,8 +379,26 @@ class LocalServer {
       }
     });
 
+    app.get('*general/:file(*)', async (req, res) => {
+      const fileName = path.basename(req.params.file);
+
+      try {
+        const foundFile = glob.sync(path.join(config.dir.project_root, 'files', 'general', fileName));
+
+        if(foundFile.length) {
+          return res.send(await fs.readFile(foundFile[0]));
+        }
+
+        res.status(404);
+        res.send('File Not Found');
+      } catch(error) {
+        res.status(500);
+        res.send(error);
+      }
+    });
+
     app.use(async (req, res) => {
-      if(/(\/file\/general)/.test(req.originalUrl)) {
+      if(/(\/file\/general|widget)/.test(req.originalUrl)) {
         return this.proxyRequest(req, res, req.originalUrl);
       }
 
@@ -307,11 +411,25 @@ class LocalServer {
       }
     });
 
-    console.log('Starting api server...');
+    winston.info('Starting api server...');
 
     return new Promise(() => {
-      app.listen(port, () => {
-        console.log(`Running api server on port ${port}`);
+      const server = https.createServer(ssl, app).listen(port, () => {
+        winston.info(`Running api server on port ${port}`);
+      });
+
+      exitHook(callback => {
+        winston.info('Closing http server.');
+        server.close(async () => {
+          try {
+            await this.unsetHosts();
+          } catch(error) {
+            winston.error(error);
+          }
+
+          winston.info('Done!')
+          callback();
+        });
       });
     });
   }

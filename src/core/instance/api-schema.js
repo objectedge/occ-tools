@@ -10,10 +10,16 @@ const definitionsPath = path.join(apiPath, 'definitions');
 const webMIMETypes = fs.readJsonSync(path.join(__dirname, 'local-server', 'webMIMETypes.json'));
 
 const schemaPath = path.join(apiPath, 'schema.json');
-const schemaURL = `${config.endpoints.baseUrl}/ccstore/v1/metadata-catalog`;
-const registryEndpoint = `${config.endpoints.store}/ccstoreui/v1/registry`;
 
 class ApiSchema {
+  constructor(options, instance) {
+    this.options = options;
+    this.instanceOptions = instance.options;
+
+    this.schemaURL = `${this.instanceOptions.domain}/ccstore/v1/metadata-catalog`;
+    this.registryEndpoint = `${this.instanceOptions.domain}/ccstoreui/v1/registry`;
+  }
+
   makeRequest(url) {
     winston.info(`Requesting ${url}...`);
 
@@ -43,11 +49,11 @@ class ApiSchema {
 
   grab() {
     return new Promise(async (resolve, reject) => {
-      winston.info(`Requesting schema from ${schemaURL}...`);
+      winston.info(`Requesting schema from ${this.schemaURL}...`);
 
       try {
-        const schemaRequestResponse = await this.makeRequest(schemaURL);
-        const registryRequestResponse = await this.makeRequest(registryEndpoint);
+        const schemaRequestResponse = await this.makeRequest(this.schemaURL);
+        const registryRequestResponse = await this.makeRequest(this.registryEndpoint);
 
         const schemaJSON = JSON.parse(schemaRequestResponse.body);
         const registryJSON = JSON.parse(registryRequestResponse.body);
@@ -79,7 +85,7 @@ class ApiSchema {
 
             try {
               if(method === 'get' && !/\{\}/.test(endpointMapData.url)) {
-                endpointMapResponse = await this.makeRequest(`${config.endpoints.store}${endpointMapData.url}`);
+                endpointMapResponse = await this.makeRequest(`${this.instanceOptions.domain}${endpointMapData.url}`);
                 sampleResponse = JSON.parse(endpointMapResponse.body);
               }
             } catch(error) {}

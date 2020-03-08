@@ -66,13 +66,12 @@ var _configDescriptor = {
   instanceId: instanceId,
   localServer: {
     api: {
-      port: 3000,
-      domain: 'http://localhost'
+      port: 443
     },
     karma: {
       port: 9876,
       urlRoot: '/app'
-    } 
+    }
   },
   dir: {
     project_base: path.join(configsData.projects.current.path),
@@ -81,7 +80,8 @@ var _configDescriptor = {
     server_side_root: path.join(configsData.projects.current.path, 'server-side-extensions'),
     storefront_dir_name: storefrontDir,
     mocks: path.join(absoluteStorefrontDir, mocksDirName),
-    instanceDefinitions: instanceDefinitionsDir
+    instanceDefinitions: instanceDefinitionsDir,
+    occToolsProject: path.join(configsData.projects.current.path, 'occ-tools.project.json')
   },
   theme: {
     name: configsData.projects.current.theme.name,

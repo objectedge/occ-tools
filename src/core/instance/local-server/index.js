@@ -11,6 +11,7 @@ const url = require('url');
 const exitHook = require("async-exit-hook");
 const config = require('../../config');
 const devcert = require('devcert');
+const Bundler = require('../../bundler');
 const endpointsMapping = [];
 
 class LocalServer {
@@ -18,6 +19,55 @@ class LocalServer {
     this.options = options;
     this.instanceOptions = instance.options;
     this.hostname = url.parse(this.instanceOptions.domain).hostname;
+    this.bundler = new Bundler({
+      source: '/js',
+      debug: true,
+      dest: '/js',
+      watch: true,
+      polling: false,
+      sourceMapType: '#eval-source-map',
+      widgets: false,
+      appLevel: true
+    });
+  }
+
+  bundleJS() {
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+      winston.info('[bundler:compile] Bundling javascript files..');
+
+      this.bundler.on('complete', async stats => {
+        winston.info('\n\n')
+        winston.info('[bundler:compile] Changes ----- %s ----- \n', new Date());
+        winston.info('[bundler:compile] %s', stats.toString('minimal'));
+
+        if(!resolved) {
+          setTimeout(() => {
+            resolve();
+            resolved = true;
+          }, 1000);
+        }
+      })
+      this.bundler.on('error', error => {
+        winston.error('[bundler:error]', error);
+        reject(error);
+      });
+
+      this.bundler.compile();
+    });
+  }
+
+  bundleFiles() {
+    return new Promise(async (resolve, reject) => {
+      winston.info('[bundler:compile] Bundling files..');
+
+      try {
+        await this.bundleJS();
+        resolve();
+      } catch(error) {
+        reject(error);
+      }
+    });
   }
 
   setHosts() {
@@ -55,6 +105,7 @@ class LocalServer {
 
   async run() {
     try {
+      await this.bundleFiles();
       await this.setHosts();
       winston.info(`Hosts set!`);
     } catch(error) {
@@ -62,7 +113,6 @@ class LocalServer {
     }
 
     const ssl = await devcert.certificateFor(this.hostname, { skipHostsFile: true });
-
     const app = express();
     const port = config.localServer.api.port;
 

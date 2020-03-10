@@ -163,8 +163,9 @@ Compiler.prototype.defineCompiler = function (done) {
   if(self.configs.appLevelFilesList) {
     self.configs.appLevelFilesList.forEach(appLevelFile => {
       entries[path.join('app-level', appLevelFile.name, appLevelFile.name)] = appLevelFile.entry;
-     modulesInclude.push(path.dirname(appLevelFile.entry));
-     modulesInclude.push(appLevelFile.appLevelPath);
+      entries[path.join('app-level', appLevelFile.name, appLevelFile.name + '.min')] = appLevelFile.entry;
+      modulesInclude.push(path.dirname(appLevelFile.entry));
+      modulesInclude.push(appLevelFile.appLevelPath);
     });
   }
 

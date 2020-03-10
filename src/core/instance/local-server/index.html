@@ -64,7 +64,7 @@
         };
     </script>
 
-    <title data-bind="text: $data.title"></title>
+    <title data-bind="text: 'Local Dev - ' + $data.title()"></title>
     <!-- ko if: $data.noindex && $data.noindex() -->
     <meta name="robots" content="noindex" />
     <!-- /ko -->
@@ -188,14 +188,8 @@
                   </div>
                   <!-- /ko -->
 
-                  <!-- ko ifnot: $data.templateSrc -->
-                    <!-- ko if: templateUrl() -->
-                    <div data-bind='template: {name: templateUrl(), templateUrl: ""}, attr: {id: typeId()+"-"+id()}'></div>
-                    <!-- /ko -->
-                  <!-- /ko -->
-
-                  <!-- ko if: $data.templateSrc -->
-                  <div data-bind='template: {name: templateUrl(),templateSrc: templateSrc()}, attr: {id: typeId()+"-"+id()}'></div>
+                  <!-- ko if: templateUrl() -->
+                  <div data-bind='template: {name: templateUrl(), templateUrl: ""}, attr: {id: typeId()+"-"+id()}'></div>
                   <!-- /ko -->
 
                 <!-- /ko -->
@@ -236,9 +230,9 @@
       "statusCode": "200"
       },
       "ccResourceLoader": {"jsUrls": [
-      "/proxy/file/v5278407710802911065/global/__requireJSCustomConfig.min.js?bust=NTI3ODQwNzcxMDgwMjkxMTA2NQ==",
-      "/proxy/file/v1278417727618747667/global/oeCore.min.js?bust=MTI3ODQxNzcyNzYxODc0NzY2Nw==",
-      "/proxy/file/v2271090536707179808/global/oeLibs.min.js?bust=MjI3MTA5MDUzNjcwNzE3OTgwOA=="
+      "/file/v5278407710802911065/global/__requireJSCustomConfig.min.js?bust=NTI3ODQwNzcxMDgwMjkxMTA2NQ==",
+      "/file/v1278417727618747667/global/oeCore.min.js?bust=MTI3ODQxNzcyNzYxODc0NzY2Nw==",
+      "/file/v2271090536707179808/global/oeLibs.min.js?bust=MjI3MTA5MDUzNjcwNzE3OTgwOA=="
       ]},
       "pageLayout/css-loader": {"optimizingCSS": true}
     },

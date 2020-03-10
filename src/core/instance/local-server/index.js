@@ -20,8 +20,13 @@ class LocalServer {
   constructor(options, instance) {
     this.options = options;
     this.instanceOptions = instance.options;
-    this.hostname = url.parse(this.instanceOptions.domain).hostname;
-    this.hostsManager = new HostsManager({ hostname: this.hostname, ip: '127.0.0.1' });
+    this.domain = this.instanceOptions.domain;
+    this.localDomain = this.domain.replace(/:\/\//, '://local.');
+    this.hostname = url.parse(this.domain).hostname;
+    this.localHostname = url.parse(this.localDomain).hostname;
+    this.hostsManager = new HostsManager({ hostname: this.localHostname, ip: '127.0.0.1' });
+    this.syncAllApiRequests = false;
+    this.proxyAllApis = false;
 
     this.bundler = new Bundler({
       source: '/js',
@@ -104,10 +109,45 @@ class LocalServer {
     });
   }
 
+  async transpiledJsResponse(type, req, res) {
+    const fileName = path.basename(req.params.file);
+
+    try {
+      const foundFile = glob.sync(path.join(config.dir.project_root, '.occ-transpiled', type, '**', fileName));
+
+      if(foundFile.length) {
+        res.type('js');
+        return res.send(await fs.readFile(foundFile[0]));
+      }
+
+      return this.proxyRequest(req, res, req.originalUrl);
+    } catch(error) {
+      res.status(500);
+      res.send(error);
+    }
+  }
+
+  async templateResponse(req, res) {
+    let widgetName = req.params.widgetName;
+
+    try {
+      const foundFile = glob.sync(path.join(config.dir.project_root, 'widgets', '**', widgetName, 'templates', 'display.template'));
+
+      if(foundFile.length) {
+        return res.send(await fs.readFile(foundFile[0]));
+      }
+
+      return this.proxyRequest(req, res, req.originalUrl);
+    } catch(error) {
+      console.log(error);
+      res.status(500);
+      res.send(error);
+    }
+  }
+
   async proxyRequest(req, res, originalPath) {
     try {
-      await this.unsetHosts();
-      const url = `${this.instanceOptions.domain}/${originalPath}`;
+      const url = `${this.domain}/${originalPath}`;
 
       req.pipe(request(url, { rejectUnauthorized: false }).on('response', async response => {
         const setCookiesHeader = response.headers['set-cookie'];
@@ -119,8 +159,6 @@ class LocalServer {
             jsesc(cookie)
           );
         }
-
-        await this.setHosts();
       })).pipe(res);
     } catch(error) {
       res.status(500);
@@ -145,7 +183,7 @@ class LocalServer {
       winston.error(error);
     }
 
-    const ssl = await devcert.certificateFor(this.hostname, { skipHostsFile: true });
+    const ssl = await devcert.certificateFor(this.localHostname, { skipHostsFile: true });
     const app = express();
     const port = config.localServer.api.port;
 
@@ -351,6 +389,10 @@ class LocalServer {
               app[requestDefinition.method](`*${requestEndpoint}`, middleware, async (req, res) => {
                 res.header("OperationId", requestData.operationId);
 
+                if(this.proxyAllApis) {
+                  return this.proxyRequest(req, res, req.originalUrl);
+                }
+
                 Object.keys(responseDefinition).forEach(requestOption => {
                   if(requestOption === 'headers') {
                     res.set(responseDefinition.headers);
@@ -366,26 +408,50 @@ class LocalServer {
                 }
 
                 const syncArgument = req.__syncRemote;
-                if(syncArgument) {
-                  delete req.__syncRemote;
-                  await this.unsetHosts();
+                if(syncArgument || this.syncAllApiRequests) {
+                  if(syncArgument) {
+                    delete req.__syncRemote;
+                  }
 
-                  request(`${this.hostname}/${req.originalUrl}`, { rejectUnauthorized: false }, async (error, response, body) => {
+                  const requestOptions = {
+                    rejectUnauthorized: false,
+                    gzip: true
+                  };
+
+                  const remoteUrl = `${this.domain}/${req.originalUrl}`;
+
+                  req.pipe(request(remoteUrl, requestOptions, async (error, response, body) => {
                     if(error) {
                       res.status(500);
                       res.send(error.message);
                       return;
                     }
 
-                    await fs.outputJSON(responseDataPath, JSON.parse(body), { spaces: 2 });
-                    winston.log(`${req.originalUrl} synced!`);
-                    await this.setHosts();
-                    res.send(await fs.readFile(responseDataPath, 'utf8'));
-                  });
+                    const rawBody = body.replace(new RegExp(this.domain, 'g'), this.localDomain);
+                    let content;
+
+                    try {
+                      if(/\/pages\/css/.test(req.originalUrl)) {
+                        content = rawBody;
+                        await fs.outputFile(responseDataPath, content);
+                      } else {
+                        content = JSON.parse(rawBody);
+                        await fs.outputJSON(responseDataPath, content, { spaces: 2 });
+                      }
+
+                      winston.info(`Synced: ${remoteUrl.replace(/[?&]syncRemote=true/, '')}`);
+
+                      res.send(content);
+                    } catch(error) {
+                      res.status(500);
+                      res.send(error.message);
+                    }
+                  }))
 
                   return;
                 }
 
+                // Otherwise just send the local response data
                 res.send(await fs.readFile(responseDataPath, 'utf8'));
               });
             } catch(error) {
@@ -397,6 +463,16 @@ class LocalServer {
         }
       }
     }
+
+    app.get('/sync-all-apis/:status', async (req, res) => {
+      this.syncAllApiRequests = req.params.status === 'true';
+      res.json({ syncingRequests: this.syncAllApiRequests });
+    });
+
+    app.get('/proxy-all-apis/:status', async (req, res) => {
+      this.proxyAllApis = req.params.status === 'true';
+      res.json({ proxyAllApis: this.proxyAllApis });
+    });
 
     app.get('/occ-server-details', (req, res) => {
       res.json(endpointsMapping);
@@ -465,6 +541,10 @@ class LocalServer {
       }
     });
 
+    app.get('/file/*/global/:file(*.js)', this.transpiledJsResponse.bind(this, 'app-level'));
+    // app.get('/file/*/widget/:file(*.js)', this.transpiledJsResponse.bind(this, 'widgets'));
+    // app.get('/file/*/widget/:version?/:widgetName/*/*', this.templateResponse.bind(this));
+
     app.get('*general/:file(*)', async (req, res) => {
       const fileName = path.basename(req.params.file);
 
@@ -475,8 +555,7 @@ class LocalServer {
           return res.send(await fs.readFile(foundFile[0]));
         }
 
-        res.status(404);
-        res.send('File Not Found');
+        return this.proxyRequest(req, res, req.originalUrl);
       } catch(error) {
         res.status(500);
         res.send(error);
@@ -484,7 +563,7 @@ class LocalServer {
     });
 
     app.use(async (req, res) => {
-      if(/(\/file\/general|widget)/.test(req.originalUrl)) {
+      if(/(\/file\/general)/.test(req.originalUrl)) {
         return this.proxyRequest(req, res, req.originalUrl);
       }
 

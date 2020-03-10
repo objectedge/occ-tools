@@ -198,9 +198,17 @@ Instance.prototype.do_local_server = function(subcmd, opts, args, callback) {
       return callback(err);
     });
 
-    instance.runLocalServer();
+    instance.runLocalServer({ updateHosts: opts.updateHosts });
   });
 };
+
+Instance.prototype.do_local_server.options = [{
+  names: ['updateHosts', 'u'],
+  helpArg: '[updateHosts]',
+  type: 'bool',
+  default: true,
+  help: '(Optional) It will by default update the hosts in your machine.'
+}];
 
 Instance.prototype.do_local_server.help = (
   'Run Local Server using the instance local assets and apis.\n\n'

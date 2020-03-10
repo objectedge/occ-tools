@@ -9,9 +9,11 @@ const bodyParser = require('body-parser');
 const hostile = require('hostile');
 const url = require('url');
 const exitHook = require("async-exit-hook");
+const jsesc = require('jsesc');
 const config = require('../../config');
 const devcert = require('devcert');
 const Bundler = require('../../bundler');
+const HostsManager = require('./hosts-manager');
 const endpointsMapping = [];
 
 class LocalServer {
@@ -19,6 +21,8 @@ class LocalServer {
     this.options = options;
     this.instanceOptions = instance.options;
     this.hostname = url.parse(this.instanceOptions.domain).hostname;
+    this.hostsManager = new HostsManager({ hostname: this.hostname, ip: '127.0.0.1' });
+
     this.bundler = new Bundler({
       source: '/js',
       debug: true,
@@ -70,43 +74,72 @@ class LocalServer {
     });
   }
 
-  setHosts() {
-    winston.info(`Setting the domain ${this.hostname} in the hosts...`);
+  setHosts(log = false) {
+    return new Promise(async (resolve, reject) => {
+      if(!this.options.updateHosts) {
+        return resolve();
+      }
 
-    return new Promise((resolve, reject) => {
-      hostile.set('127.0.0.1', this.hostname, (error) => {
-        if (error) {
-          return reject(error);
-        }
-
+      try {
+        await this.hostsManager.setHosts(log);
         resolve();
-      });
+      } catch(error) {
+        return reject(error);
+      }
     });
   }
 
-  unsetHosts() {
-    winston.info(`Unsetting the domain ${this.hostname} in the hosts...`);
+  unsetHosts(log = false) {
+    return new Promise(async (resolve, reject) => {
+      if(!this.options.updateHosts) {
+        return resolve();
+      }
 
-    return new Promise((resolve, reject) => {
-      hostile.remove('127.0.0.1', this.hostname, (error) => {
-        if (error) {
-          return reject(error);
-        }
-
+      try {
+        await this.hostsManager.unsetHosts(log);
         resolve();
-      });
+      } catch(error) {
+        return reject(error);
+      }
     });
   }
 
-  proxyRequest(req, res, originalPath) {
-    const url = `${config.endpoints.store}/${originalPath}`;
-    req.pipe(request(url)).pipe(res);
+  async proxyRequest(req, res, originalPath) {
+    try {
+      await this.unsetHosts();
+      const url = `${this.instanceOptions.domain}/${originalPath}`;
+
+      req.pipe(request(url, { rejectUnauthorized: false }).on('response', async response => {
+        const setCookiesHeader = response.headers['set-cookie'];
+
+        // Encodes any unicode character
+        // This comes from Incapsula
+        if (setCookiesHeader && Array.isArray(setCookiesHeader)) {
+          response.headers['set-cookie'] = setCookiesHeader.map(cookie =>
+            jsesc(cookie)
+          );
+        }
+
+        await this.setHosts();
+      })).pipe(res);
+    } catch(error) {
+      res.status(500);
+      res.send(error);
+    }
   }
 
   async run() {
     try {
       await this.bundleFiles();
-      await this.setHosts();
+
+      if(this.options.updateHosts) {
+        winston.info('');
+        winston.info(`You can be asked for your root password! We need this to change your hosts file`);
+        winston.info(`If you want to set the hosts manually, please use the option --updateHosts=false`);
+        winston.info('');
+      }
+
+      await this.setHosts(true);
       winston.info(`Hosts set!`);
     } catch(error) {
       winston.error(error);
@@ -335,7 +368,9 @@ class LocalServer {
                 const syncArgument = req.__syncRemote;
                 if(syncArgument) {
                   delete req.__syncRemote;
-                  request(`${config.endpoints.store}/${req.originalUrl}`, async (error, response, body) => {
+                  await this.unsetHosts();
+
+                  request(`${this.hostname}/${req.originalUrl}`, { rejectUnauthorized: false }, async (error, response, body) => {
                     if(error) {
                       res.status(500);
                       res.send(error.message);
@@ -344,6 +379,7 @@ class LocalServer {
 
                     await fs.outputJSON(responseDataPath, JSON.parse(body), { spaces: 2 });
                     winston.log(`${req.originalUrl} synced!`);
+                    await this.setHosts();
                     res.send(await fs.readFile(responseDataPath, 'utf8'));
                   });
 
@@ -472,7 +508,7 @@ class LocalServer {
         winston.info('Closing http server.');
         server.close(async () => {
           try {
-            await this.unsetHosts();
+            await this.unsetHosts(true);
           } catch(error) {
             winston.error(error);
           }

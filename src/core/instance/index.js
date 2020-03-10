@@ -81,6 +81,7 @@ Instance.prototype.grabPagesResponse = function(options) {
 
 Instance.prototype.runLocalServer = function(options) {
   var self = this;
+
   _localServer.call(self, 'run', options, function(error) {
     if (error) {
       self.emit('error', error);

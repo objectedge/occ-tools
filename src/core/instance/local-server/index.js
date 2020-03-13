@@ -1,18 +1,18 @@
+const util = require('util');
 const fs = require('fs-extra');
 const path = require('path');
 const winston = require('winston');
 const https = require('https');
 const express = require('express');
 const request = require('request');
-const glob = require('glob');
+const glob = util.promisify(require('glob'));
 const bodyParser = require('body-parser');
-const hostile = require('hostile');
 const url = require('url');
 const exitHook = require("async-exit-hook");
 const jsesc = require('jsesc');
 const config = require('../../config');
 const devcert = require('devcert');
-const Bundler = require('../../bundler');
+const Transpiler = require('./transpiler');
 const HostsManager = require('./hosts-manager');
 const endpointsMapping = [];
 
@@ -27,42 +27,143 @@ class LocalServer {
     this.hostsManager = new HostsManager({ hostname: this.localHostname, ip: '127.0.0.1' });
     this.syncAllApiRequests = false;
     this.proxyAllApis = false;
-
-    this.bundler = new Bundler({
-      source: '/js',
-      debug: true,
-      dest: '/js',
-      watch: true,
-      polling: false,
-      sourceMapType: '#eval-source-map',
-      widgets: false,
-      appLevel: true
+    this.localFiles = {};
+    this.transpiler = new Transpiler({
+      serverOptions: options,
+      instanceOptions: this.instanceOptions,
+      localFiles: this.localFiles
     });
   }
 
-  bundleJS() {
-    return new Promise((resolve, reject) => {
-      let resolved = false;
-      winston.info('[bundler:compile] Bundling javascript files..');
+  setLocalFiles() {
+    return new Promise(async (resolve, reject) => {
+      const excludeFilesList = ['.md', '.js', '.properties', '.yml', 'motorola-scripts', 'libraries', 'tests', 'mocks'];
+      const exclude = filePath => !excludeFilesList.some(file => filePath.includes(file));
 
-      this.bundler.on('complete', async stats => {
-        winston.info('\n\n')
-        winston.info('[bundler:compile] Changes ----- %s ----- \n', new Date());
-        winston.info('[bundler:compile] %s', stats.toString('minimal'));
+      try {
+        const storefrontPaths = (await glob(path.join(config.dir.project_root, '*'))).filter(exclude);
 
-        if(!resolved) {
-          setTimeout(() => {
-            resolve();
-            resolved = true;
-          }, 1000);
+        for(const storefrontPath of storefrontPaths) {
+          const baseName = path.basename(storefrontPath);
+          const localFiles = (await glob(path.join(config.dir.project_root, baseName, '**'))).filter(file => fs.lstatSync(file).isFile());
+          this.localFiles[baseName] = {};
+
+          for(const localFile of localFiles) {
+            const relativeLocalPath = path.relative(storefrontPath, localFile);
+            const name = relativeLocalPath.split(path.sep)[baseName === 'widgets' ? 1 : 0];
+            this.localFiles[baseName][name] = this.localFiles[baseName][name] || [];
+            this.localFiles[baseName][name].push(localFile);
+          }
         }
-      })
-      this.bundler.on('error', error => {
-        winston.error('[bundler:error]', error);
-        reject(error);
-      });
 
-      this.bundler.compile();
+        resolve();
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  getLocalWidgetsFromRegions(regions) {
+    const widgets = [];
+    const localWidgets = Object.keys(this.localFiles.widgets);
+
+    regions.forEach(region => region.widgets
+      .forEach(widget => {
+          for(const localWidget of localWidgets) {
+            widgets.push({ regionId: region.id, data: widget, localPaths: widget.typeId.includes(localWidget) ? this.localFiles.widgets[localWidget] : [] });
+          }
+        }
+      )
+    );
+
+    return widgets;
+  }
+
+  replaceTemplateSrc(contentJson) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const regions = contentJson.regions;
+        const widgets = this.getLocalWidgetsFromRegions(regions).filter(widget => widget.localPaths.length);
+
+        for(const widget of widgets) {
+          const templatePath = widget.localPaths.find(filePath => filePath.includes('display.template'));
+          const elementsPath = widget.localPaths.filter(filePath => /element.*templates/.test(filePath));
+
+          // Setting template src
+          widget.data.templateSrc = await fs.readFile(templatePath, 'utf8');
+
+          if(elementsPath.length && widget.data.elementsSrc) {
+            let elementsSrc = '';
+            for(const elementPath of elementsPath) {
+              const elementName = elementPath.split(path.sep).reverse()[2];
+              const elementContent = await fs.readFile(elementPath, 'utf8');
+              elementsSrc += `<script type="text/html" id="${widget.data.typeId}-${elementName}">${elementContent}</script>`;
+            }
+
+            // Setting elements src
+            widget.data.elementsSrc = elementsSrc;
+          }
+        }
+
+        resolve(JSON.stringify(contentJson));
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  replaceLayoutContent(content) {
+    let newContent = '';
+
+    return new Promise(async (resolve, reject) => {
+      try {
+        const contentJson = JSON.parse(content);
+        newContent = await this.replaceTemplateSrc(contentJson);
+        resolve(newContent);
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  syncStoreRequest(req, responseDataPath) {
+    return new Promise((resolve, reject) => {
+      if(syncArgument) {
+        delete req.__syncRemote;
+      }
+
+      const requestOptions = {
+        rejectUnauthorized: false,
+        gzip: true
+      };
+
+      const remoteUrl = `${this.domain}/${req.originalUrl}`;
+
+      req.pipe(request(remoteUrl, requestOptions, async (error, response, body) => {
+        if(error) {
+          reject(error);
+          return;
+        }
+
+        const rawBody = body.replace(new RegExp(this.domain, 'g'), this.localDomain);
+        let content;
+
+        try {
+          if(/\/pages\/css/.test(req.originalUrl)) {
+            content = rawBody;
+            await fs.outputFile(responseDataPath, content);
+          } else {
+            content = JSON.parse(rawBody);
+            await fs.outputJSON(responseDataPath, content, { spaces: 2 });
+          }
+
+          winston.info(`Synced: ${remoteUrl.replace(/[?&]syncRemote=true/, '')}`);
+
+          resolve(content);
+        } catch(error) {
+          reject(error);
+        }
+      }));
     });
   }
 
@@ -71,7 +172,8 @@ class LocalServer {
       winston.info('[bundler:compile] Bundling files..');
 
       try {
-        await this.bundleJS();
+        await this.transpiler.less();
+        await this.transpiler.js();
         resolve();
       } catch(error) {
         reject(error);
@@ -113,33 +215,36 @@ class LocalServer {
     const fileName = path.basename(req.params.file);
 
     try {
-      const foundFile = glob.sync(path.join(config.dir.project_root, '.occ-transpiled', type, '**', fileName));
+      const foundFile = await glob(path.join(config.dir.transpiled, type, '**', fileName));
 
       if(foundFile.length) {
         res.type('js');
         return res.send(await fs.readFile(foundFile[0]));
       }
 
-      return this.proxyRequest(req, res, req.originalUrl);
+      return this.proxyRequest(req, res);
     } catch(error) {
       res.status(500);
       res.send(error);
     }
   }
 
-  async templateResponse(req, res) {
-    let widgetName = req.params.widgetName;
-
+  async fileResponse(localPath, req, res) {
     try {
-      const foundFile = glob.sync(path.join(config.dir.project_root, 'widgets', '**', widgetName, 'templates', 'display.template'));
+      const foundFile = await glob(localPath);
 
       if(foundFile.length) {
+        if(/\.js/.test(req.originalUrl)) {
+          res.type('js');
+        } else if(/\.css/.test(req.originalUrl)) {
+          res.type('css');
+        }
+
         return res.send(await fs.readFile(foundFile[0]));
       }
 
-      return this.proxyRequest(req, res, req.originalUrl);
+      return this.proxyRequest(req, res);
     } catch(error) {
-      console.log(error);
       res.status(500);
       res.send(error);
     }
@@ -147,7 +252,7 @@ class LocalServer {
 
   async proxyRequest(req, res, originalPath) {
     try {
-      const url = `${this.domain}/${originalPath}`;
+      const url = `${this.domain}/${typeof originalPath === 'string' ? originalPath : req.originalUrl}`;
 
       req.pipe(request(url, { rejectUnauthorized: false }).on('response', async response => {
         const setCookiesHeader = response.headers['set-cookie'];
@@ -168,6 +273,7 @@ class LocalServer {
 
   async run() {
     try {
+      await this.setLocalFiles();
       await this.bundleFiles();
 
       if(this.options.updateHosts) {
@@ -247,11 +353,11 @@ class LocalServer {
         }
 
         try {
-          let requestsDefinition = glob.sync(path.join(responsePath, '**', 'descriptor.json'));
+          let requestsDefinition = await glob(path.join(responsePath, '**', 'descriptor.json'));
 
           // replace the response path by the custom response path
           if(customRequestsDefinitionPath) {
-            const customRequestsDefinition = glob.sync(path.join(customRequestsDefinitionPath, '**', 'descriptor.json'));
+            const customRequestsDefinition = await glob(path.join(customRequestsDefinitionPath, '**', 'descriptor.json'));
             requestsDefinition = requestsDefinition.map(definitionPath => {
               const oracleLibsDirName = config.dir.instanceDefinitions.oracleLibsDirName;
               const customLibsDirName = config.dir.instanceDefinitions.customLibsDirName;
@@ -390,7 +496,7 @@ class LocalServer {
                 res.header("OperationId", requestData.operationId);
 
                 if(this.proxyAllApis) {
-                  return this.proxyRequest(req, res, req.originalUrl);
+                  return this.proxyRequest(req, res);
                 }
 
                 Object.keys(responseDefinition).forEach(requestOption => {
@@ -407,52 +513,24 @@ class LocalServer {
                   res.type('css');
                 }
 
-                const syncArgument = req.__syncRemote;
-                if(syncArgument || this.syncAllApiRequests) {
-                  if(syncArgument) {
-                    delete req.__syncRemote;
-                  }
-
-                  const requestOptions = {
-                    rejectUnauthorized: false,
-                    gzip: true
-                  };
-
-                  const remoteUrl = `${this.domain}/${req.originalUrl}`;
-
-                  req.pipe(request(remoteUrl, requestOptions, async (error, response, body) => {
-                    if(error) {
-                      res.status(500);
-                      res.send(error.message);
-                      return;
-                    }
-
-                    const rawBody = body.replace(new RegExp(this.domain, 'g'), this.localDomain);
-                    let content;
-
-                    try {
-                      if(/\/pages\/css/.test(req.originalUrl)) {
-                        content = rawBody;
-                        await fs.outputFile(responseDataPath, content);
-                      } else {
-                        content = JSON.parse(rawBody);
-                        await fs.outputJSON(responseDataPath, content, { spaces: 2 });
-                      }
-
-                      winston.info(`Synced: ${remoteUrl.replace(/[?&]syncRemote=true/, '')}`);
-
-                      res.send(content);
-                    } catch(error) {
-                      res.status(500);
-                      res.send(error.message);
-                    }
-                  }))
-
-                  return;
+                // Sync local with remote
+                if(req.__syncRemote || this.syncAllApiRequests) {
+                  await this.syncStoreRequest(req, responseDataPath);
                 }
 
-                // Otherwise just send the local response data
-                res.send(await fs.readFile(responseDataPath, 'utf8'));
+                let content = await fs.readFile(responseDataPath, 'utf8');
+
+                if(/ccstoreui\/v1\/pages\/layout\//.test(req.originalUrl)) {
+                  try {
+                    content = await this.replaceLayoutContent(content);
+                  } catch(error) {
+                    winston.info(error);
+                    res.status(500);
+                    res.send(error);
+                  }
+                }
+
+                res.send(content);
               });
             } catch(error) {
               winston.info(`Warning: There is no valid response for the request "${requestData.operationId}"`);
@@ -524,49 +602,21 @@ class LocalServer {
     });
 
     app.get('/oe-files/:file(*)', async (req, res) => {
-      const fileName = path.basename(req.params.file);
-
-      try {
-        const foundFile = glob.sync(path.join(config.dir.project_root, 'files', '**', fileName));
-
-        if(foundFile.length) {
-          return res.send(await fs.readFile(foundFile[0]));
-        }
-
-        res.status(404);
-        res.send('File Not Found');
-      } catch(error) {
-        res.status(500);
-        res.send(error);
-      }
+      return this.fileResponse(path.join(config.dir.project_root, 'files', '**', req.params.file), req, res);
     });
 
     app.get('/file/*/global/:file(*.js)', this.transpiledJsResponse.bind(this, 'app-level'));
-    // app.get('/file/*/widget/:file(*.js)', this.transpiledJsResponse.bind(this, 'widgets'));
-    // app.get('/file/*/widget/:version?/:widgetName/*/*', this.templateResponse.bind(this));
+    app.get('/file/*/widget/:file(*.js)', this.transpiledJsResponse.bind(this, 'widgets'));
+    app.get('/ccstore/v1/images*', this.proxyRequest.bind(this));
+    app.get('/file/*/css/:file(*)', async (req, res) => {
+      return this.fileResponse(path.join(config.dir.transpiled, 'less', req.params.file), req, res);
+    });
 
     app.get('*general/:file(*)', async (req, res) => {
-      const fileName = path.basename(req.params.file);
-
-      try {
-        const foundFile = glob.sync(path.join(config.dir.project_root, 'files', 'general', fileName));
-
-        if(foundFile.length) {
-          return res.send(await fs.readFile(foundFile[0]));
-        }
-
-        return this.proxyRequest(req, res, req.originalUrl);
-      } catch(error) {
-        res.status(500);
-        res.send(error);
-      }
+      return this.fileResponse(path.join(config.dir.project_root, 'files', 'general', req.params.file), req, res);
     });
 
     app.use(async (req, res) => {
-      if(/(\/file\/general)/.test(req.originalUrl)) {
-        return this.proxyRequest(req, res, req.originalUrl);
-      }
-
       try {
         let htmlText = await fs.readFile(path.join(__dirname + '/index.html'), 'utf8');
         res.send(htmlText);

@@ -82,11 +82,11 @@
 
     <link href="/proxy/css/style.css?bust=20.1.2" rel="stylesheet" type="text/css"/>
 
-
-
-    <link href="/proxy/file/v4602491664175275731/css/base.css?occsite=siteUS" rel="stylesheet" type="text/css" /><link href="/proxy/file/v2019215943614461839/css/common.css?occsite=siteUS" rel="stylesheet" type="text/css" />
+    <link href="/proxy/file/v4602491664175275731/css/base.css?occsite=siteUS" rel="stylesheet" type="text/css" />
+    <link href="/file/v4602491664175275731/css/base.css?occsite=siteUS" rel="stylesheet" type="text/css" />
+    <link href="/file/v2019215943614461839/css/common.css?occsite=siteUS" rel="stylesheet" type="text/css" />
     <!--[if lte IE 9]>
-    <link href="/css/storefront-ie.css?bust=18.3" rel="stylesheet" type="text/css"/>
+    <link href="/proxy/css/storefront-ie.css?bust=18.3" rel="stylesheet" type="text/css"/>
 
     <![endif]-->
 
@@ -188,8 +188,14 @@
                   </div>
                   <!-- /ko -->
 
-                  <!-- ko if: templateUrl() -->
-                  <div data-bind='template: {name: templateUrl(), templateUrl: ""}, attr: {id: typeId()+"-"+id()}'></div>
+                  <!-- ko ifnot: $data.templateSrc -->
+                    <!-- ko if: templateUrl() -->
+                    <div data-bind='template: {name: templateUrl(), templateUrl: ""}, attr: {id: typeId()+"-"+id()}'></div>
+                    <!-- /ko -->
+                  <!-- /ko -->
+
+                  <!-- ko if: $data.templateSrc -->
+                  <div data-bind='template: {name: templateUrl(),templateSrc: templateSrc()}, attr: {id: typeId()+"-"+id()}'></div>
                   <!-- /ko -->
 
                 <!-- /ko -->
@@ -234,7 +240,7 @@
       "/file/v1278417727618747667/global/oeCore.min.js?bust=MTI3ODQxNzcyNzYxODc0NzY2Nw==",
       "/file/v2271090536707179808/global/oeLibs.min.js?bust=MjI3MTA5MDUzNjcwNzE3OTgwOA=="
       ]},
-      "pageLayout/css-loader": {"optimizingCSS": true}
+      "pageLayout/css-loader": {"optimizingCSS": false}
     },
     "waitSeconds": 45
     };</script>

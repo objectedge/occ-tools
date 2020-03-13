@@ -81,7 +81,9 @@ var _configDescriptor = {
     storefront_dir_name: storefrontDir,
     mocks: path.join(absoluteStorefrontDir, mocksDirName),
     instanceDefinitions: instanceDefinitionsDir,
-    occToolsProject: path.join(configsData.projects.current.path, 'occ-tools.project.json')
+    occToolsProject: path.join(configsData.projects.current.path, 'occ-tools.project.json'),
+    transpiled: path.join(absoluteStorefrontDir, '.occ-transpiled'),
+    occComponents: path.join(absoluteStorefrontDir, '.occ-components')
   },
   theme: {
     name: configsData.projects.current.theme.name,

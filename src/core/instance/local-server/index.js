@@ -45,7 +45,7 @@ class LocalServer {
 
         for(const storefrontPath of storefrontPaths) {
           const baseName = path.basename(storefrontPath);
-          const localFiles = (await glob(path.join(config.dir.project_root, baseName, '**'))).filter(file => fs.lstatSync(file).isFile());
+          const localFiles = (await glob(path.join(config.dir.project_root, baseName, '**'))).filter(file => fs.lstatSync(file).isFile() && !/\.zip/.test(file));
           this.localFiles[baseName] = {};
 
           for(const localFile of localFiles) {
@@ -89,8 +89,10 @@ class LocalServer {
           const templatePath = widget.localPaths.find(filePath => filePath.includes('display.template'));
           const elementsPath = widget.localPaths.filter(filePath => /element.*templates/.test(filePath));
 
-          // Setting template src
-          widget.data.templateSrc = await fs.readFile(templatePath, 'utf8');
+          if(templatePath) {
+            // Setting template src
+            widget.data.templateSrc = await fs.readFile(templatePath, 'utf8');
+          }
 
           if(elementsPath.length && widget.data.elementsSrc) {
             let elementsSrc = '';
@@ -128,7 +130,7 @@ class LocalServer {
 
   syncStoreRequest(req, responseDataPath) {
     return new Promise((resolve, reject) => {
-      if(syncArgument) {
+      if(req.__syncRemote) {
         delete req.__syncRemote;
       }
 

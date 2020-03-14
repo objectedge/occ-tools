@@ -70,7 +70,7 @@ Instance.prototype.grabApiSchema = function(options) {
 
 Instance.prototype.grabPagesResponse = function(options) {
   var self = this;
-  _pagesResponse.call(self, 'grab', options, function(error) {
+  _pagesResponse.call(self, options.type, options, function(error) {
     if (error) {
       self.emit('error', error);
     } else {

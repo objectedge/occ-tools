@@ -64,7 +64,7 @@
         };
     </script>
 
-    <title data-bind="text: 'Local Dev - ' + $data.title()"></title>
+    <title data-bind="text: 'Local Dev - ' + ($data && typeof $data.title === 'function' ? $data.title() : '')"></title>
     <!-- ko if: $data.noindex && $data.noindex() -->
     <meta name="robots" content="noindex" />
     <!-- /ko -->

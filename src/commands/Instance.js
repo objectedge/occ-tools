@@ -173,9 +173,17 @@ Instance.prototype.do_grab_pages_response = function(subcmd, opts, args, callbac
       return callback(err);
     });
 
-    instance.grabPagesResponse();
+    instance.grabPagesResponse(opts);
   });
 };
+
+Instance.prototype.do_grab_pages_response.options = [{
+  names: ['type', 't'],
+  helpArg: '[type]',
+  type: 'string',
+  default: 'all',
+  help: '(Optional) Grab specific page content: pages, layouts, css, collections, products.'
+}];
 
 Instance.prototype.do_grab_pages_response.help = (
   'Grab Pages Response from OCC.\n\n'

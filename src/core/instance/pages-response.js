@@ -15,11 +15,13 @@ class PagesResponse {
     this.instanceOptions = instance.options;
 
     this.baseUrl = this.instanceOptions.domain;
+    this.collectionsEndpoint = `${this.baseUrl}/ccstoreui/v1/collections/rootCategory?catalogId=cloudCatalog&maxLevel=5&expand=childCategories&fields=childCategories.repositoryId,childCategories.displayName,childCategories.route,childCategories.childCategories`;
+
     this.pagesDataEndpoints = {
       css: `${this.baseUrl}/ccstoreui/v1/pages/css/%s?occsite=siteUS`,
       global: `${this.baseUrl}/ccstoreui/v1/pages/%s?dataOnly=false&cacheableDataOnly=true&productTypesRequired=true`,
       pageContext: `${this.baseUrl}/ccstoreui/v1/pages/%s?dataOnly=false&currentDataOnly=true`,
-      layout: `${this.baseUrl}/ccstoreui/v1/pages/layout/%s?ccvp=lg`,
+      layout: `${this.baseUrl}/ccstoreui/v1/pages/layout/%s?ccvp=lg`
     };
 
     this.apiPath = config.dir.instanceDefinitions.oracleApi;
@@ -29,15 +31,70 @@ class PagesResponse {
     this.cssPathForLayouts = path.join(this.responsesPath, 'getCssPathForLayout');
   }
 
-  grab() {
+  getCollections() {
+    const allCollections = [];
+    const loopTroughCollections = childCategories => {
+      for(const category of childCategories) {
+        allCollections.push({
+          route: category.route,
+          displayName: category.displayName,
+          repositoryId: category.repositoryId
+        });
+
+        if(category.childCategories) {
+          loopTroughCollections(category.childCategories);
+        }
+      }
+    };
+
+    return new Promise(async (resolve, reject) => {
+      try {
+        let rootCategory = await request(this.collectionsEndpoint);
+        rootCategory = JSON.parse(this.replaceRemoteLinks(rootCategory.body));
+        loopTroughCollections(rootCategory.childCategories);
+        resolve(allCollections);
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  // TODO
+  // move localDomain from the local-server to the instance option level
+  replaceRemoteLinks(body) {
+    const localDomain = this.instanceOptions.domain.replace(/:\/\//, '://local.');
+    return body.replace(new RegExp(this.instanceOptions.domain, 'g'), localDomain);
+  }
+
+  all() {
     return new Promise(async (resolve, reject) => {
       winston.info(`Getting main page global data from ${this.baseUrl}...\n`);
 
       try {
         let globalPageData = await request(util.format(this.pagesDataEndpoints.global, 'home'));
-        globalPageData = JSON.parse(globalPageData.body);
+        globalPageData = JSON.parse(this.replaceRemoteLinks(globalPageData.body));
 
+        let allCollections = await this.getCollections();
         const links = globalPageData.data.global.links;
+
+        for(const collection of allCollections) {
+          links[collection.repositoryId] = {
+            defaultPage: true,
+            displayName: collection.displayName,
+            indexable: true,
+            sites: [],
+            rules: [],
+            source: null,
+            pageTypeItem: { repositoryId: 'categoryPageType' },
+            target: 100,
+            route: collection.route,
+            pageType: 'category',
+            repositoryId: collection.repositoryId,
+            name: collection.repositoryId,
+            supportedDevices: null,
+            secured: false
+          }
+        }
 
         await fs.ensureDir(this.responsesPath);
         await fs.ensureDir(this.pagesPath);
@@ -86,15 +143,9 @@ class PagesResponse {
 
             winston.info(`Getting data from ${dataTypeEndpoint}...`);
             const routeResponse = await request(dataTypeEndpoint);
+            routeResponse.body = this.replaceRemoteLinks(routeResponse.body);
             const parseBody = pageDataType === 'css' ? routeResponse.body : JSON.parse(routeResponse.body);
             const isBodyString = typeof parseBody === 'string';
-
-            // Don't keep any widgets, we are going to mock this
-            if(!isBodyString && parseBody.hasOwnProperty('regions')) {
-              parseBody.regions.forEach(region => {
-                region.widgets = [];
-              });
-            }
 
             // Don't keep information about resolution on layouts, it will force us to generate one layout for each resolution
             // we should mock this when necessary
@@ -134,8 +185,8 @@ module.exports = async function(action, options, callback) {
 
   try {
     switch(action) {
-      case 'grab':
-        callback(null, await pagesResponse.grab());
+      case 'all':
+        callback(null, await pagesResponse.all());
         break;
       default:
         callback();

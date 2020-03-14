@@ -35,8 +35,12 @@ class PagesResponse {
     const allCollections = [];
     const loopTroughCollections = childCategories => {
       for(const category of childCategories) {
+        let route = category.route.split('/');
+        route[1] = '*';
+        route = route.join('/');
+
         allCollections.push({
-          route: category.route,
+          route,
           displayName: category.displayName,
           repositoryId: category.repositoryId
         });

@@ -7,6 +7,7 @@ const express = require('express');
 const request = require('request');
 const glob = util.promisify(require('glob'));
 const bodyParser = require('body-parser');
+const mime = require('mime');
 const url = require('url');
 const exitHook = require("async-exit-hook");
 const jsesc = require('jsesc');
@@ -128,6 +129,25 @@ class LocalServer {
     });
   }
 
+  async templateResponse(req, res) {
+    let widgetName = req.params.widgetName;
+    let fileName = req.params.file;
+
+    try {
+      const foundFile = glob.sync(path.join(config.dir.project_root, 'widgets', '**', widgetName, 'templates', fileName));
+
+      if(foundFile.length) {
+        return res.send(await fs.readFile(foundFile[0]));
+      }
+
+      return this.proxyRequest(req, res, req.originalUrl);
+    } catch(error) {
+      console.log(error);
+      res.status(500);
+      res.send(error);
+    }
+  }
+
   syncStoreRequest(req, responseDataPath) {
     return new Promise((resolve, reject) => {
       if(req.__syncRemote) {
@@ -233,20 +253,18 @@ class LocalServer {
 
   async fileResponse(localPath, req, res) {
     try {
-      const foundFile = await glob(localPath);
+      let foundFile = await glob(localPath);
 
       if(foundFile.length) {
-        if(/\.js/.test(req.originalUrl)) {
-          res.type('js');
-        } else if(/\.css/.test(req.originalUrl)) {
-          res.type('css');
-        }
-
-        return res.send(await fs.readFile(foundFile[0]));
+        foundFile = foundFile[0];
+        const type = mime.getType(foundFile);
+        res.type(type);
+        return res.send(await fs.readFile(foundFile));
       }
 
       return this.proxyRequest(req, res);
     } catch(error) {
+      console.log(error);
       res.status(500);
       res.send(error);
     }
@@ -609,6 +627,7 @@ class LocalServer {
 
     app.get('/file/*/global/:file(*.js)', this.transpiledJsResponse.bind(this, 'app-level'));
     app.get('/file/*/widget/:file(*.js)', this.transpiledJsResponse.bind(this, 'widgets'));
+    app.get('/file/*/widget/:version?/:widgetName/*/:file(*)', this.templateResponse.bind(this));
     app.get('/ccstore/v1/images*', this.proxyRequest.bind(this));
     app.get('/file/*/css/:file(*)', async (req, res) => {
       return this.fileResponse(path.join(config.dir.transpiled, 'less', req.params.file), req, res);

@@ -52,6 +52,7 @@
     "jsesc": "^2.5.1",
     "less": "^2.7.3",
     "lodash": "^4.17.15",
+    "mime": "^2.4.4",
     "ncp": "^2.0.0",
     "nodemailer": "4.6.8",
     "occ-custom-bootstrap-less": "github:douglashipolito/occ-custom-bootstrap-less",

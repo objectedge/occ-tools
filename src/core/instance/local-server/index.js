@@ -144,7 +144,7 @@ class LocalServer {
 
       return this.proxyRequest(req, res, req.originalUrl);
     } catch(error) {
-      console.log(error);
+      winston.error(error);
       res.status(500);
       res.send(error);
     }
@@ -169,7 +169,7 @@ class LocalServer {
           return;
         }
 
-        const rawBody = body.replace(new RegExp(this.domain, 'g'), this.localDomain);
+        const rawBody = this.replaceRemoteLinks(body);
         let content;
 
         try {
@@ -266,16 +266,22 @@ class LocalServer {
 
       return this.proxyRequest(req, res);
     } catch(error) {
-      console.log(error);
+      winston.error(error);
       res.status(500);
       res.send(error);
     }
   }
 
+  // TODO
+  // move localDomain from the local-server to the instance option level
+  replaceRemoteLinks(body) {
+    const localDomain = this.instanceOptions.domain.replace(/:\/\//, '://local.');
+    return body.replace(new RegExp(this.instanceOptions.domain, 'g'), localDomain);
+  }
+
   async proxyRequest(req, res, originalPath) {
     try {
       const url = `${this.domain}/${typeof originalPath === 'string' ? originalPath : req.originalUrl}`;
-
       req.pipe(request(url, { rejectUnauthorized: false }).on('response', async response => {
         const setCookiesHeader = response.headers['set-cookie'];
 
@@ -288,6 +294,7 @@ class LocalServer {
         }
       })).pipe(res);
     } catch(error) {
+      winston.error(error);
       res.status(500);
       res.send(error);
     }
@@ -506,7 +513,7 @@ class LocalServer {
 
     app.use(async (req, res, next) => {
       if(/ccstore/.test(req.originalUrl)) {
-        return next('route');
+        return next();
       }
 
       try {

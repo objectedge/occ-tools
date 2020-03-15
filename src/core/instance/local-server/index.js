@@ -68,14 +68,16 @@ class LocalServer {
     const widgets = [];
     const localWidgets = Object.keys(this.localFiles.widgets);
 
-    regions.forEach(region => region.widgets
-      .forEach(widget => {
-          for(const localWidget of localWidgets) {
-            widgets.push({ regionId: region.id, data: widget, localPaths: widget.typeId.includes(localWidget) ? this.localFiles.widgets[localWidget] : [] });
+    if(Array.isArray(regions)) {
+      regions.forEach(region => region.widgets
+        .forEach(widget => {
+            for(const localWidget of localWidgets) {
+              widgets.push({ regionId: region.id, data: widget, localPaths: widget.typeId.includes(localWidget) ? this.localFiles.widgets[localWidget] : [] });
+            }
           }
-        }
-      )
-    );
+        )
+      );
+    }
 
     return widgets;
   }
@@ -291,6 +293,245 @@ class LocalServer {
     }
   }
 
+  setCCStoreRoutes(app) {
+    const checkEquality = (object1, object2) => {
+      const optionsPropertyKey = '__options';
+      const options = object1[optionsPropertyKey] || {};
+      const matchType = options.matchType || 'string';
+      const match = (object1Value, object2Value) => {
+        if(matchType === 'string') {
+          return object1Value.toString() === object2Value.toString();
+        }
+
+        return new RegExp(object1Value.toString()).test(object2Value.toString());
+      };
+
+      if(typeof object1 === 'string') {
+        return match(object1, object2);
+      }
+
+      const iterableObjectKeys = Object.keys(object2).filter(item => item !== optionsPropertyKey);
+
+      return iterableObjectKeys.every(objectKey => {
+        const object1Value = object1[objectKey];
+        const object2Value = object2[objectKey];
+
+        if(typeof object2Value === 'undefined' || typeof object1Value === 'undefined') {
+          return false;
+        }
+
+        if(typeof object1Value === 'object' && typeof object2Value === 'object') {
+          return checkEquality(object1Value, object2Value);
+        }
+
+        return match(object1Value, object2Value);
+      });
+    };
+
+    const middleware = (requestDefinition, req, res, next) => {
+      const queryParameters = requestDefinition.queryParameters;
+      const headers = requestDefinition.headers;
+      const hasQueryParameters = Object.keys(queryParameters).length;
+      const hasHeaders = Object.keys(headers).length;
+      const hasBody = Object.keys(requestDefinition.body).length; // Check with Object.keys even if it's an object
+      const body = requestDefinition.body;
+
+      // Workaround to set the sync argument in all endpoints
+      if(req.query.syncRemote) {
+        req.__syncRemote = req.query.syncRemote;
+        delete req.query.syncRemote;
+      }
+
+      if(!hasQueryParameters && !hasHeaders && !hasBody) {
+        return next();
+      }
+
+      let matches = [];
+
+      if(hasQueryParameters) {
+        matches.push(checkEquality(queryParameters, req.query));
+      }
+
+      if(hasHeaders) {
+        matches.push(checkEquality(headers, req.headers));
+      }
+
+      if(hasBody) {
+        matches.push(checkEquality(body, req.body));
+      }
+
+      if(!matches.every(match => match)) {
+        return next('route');
+      }
+
+      next();
+    };
+
+    for(const endpointMapping of endpointsMapping) {
+      const requestEndpoint = endpointMapping.path;
+      const requestDefinition = endpointMapping.requestDefinition;
+      const requestData = endpointMapping.requestData;
+      const responseDefinition = endpointMapping.responseDefinition;
+      const responseDataPath = endpointMapping.responseDataPath;
+
+      app[requestDefinition.method](requestEndpoint, middleware.bind(this, requestDefinition), async (req, res) => {
+        res.header("OperationId", requestData.operationId);
+
+        if(this.proxyAllApis) {
+          return this.proxyRequest(req, res);
+        }
+
+        Object.keys(responseDefinition).forEach(requestOption => {
+          if(requestOption === 'headers') {
+            res.set(responseDefinition.headers);
+          }
+
+          if(requestOption === 'statusCode') {
+            res.status(responseDefinition.statusCode);
+          }
+        });
+
+        if(/\/css\//.test(req.originalUrl)) {
+          res.type('css');
+        }
+
+        // Sync local with remote
+        if(req.__syncRemote || this.syncAllApiRequests) {
+          try {
+            await this.syncStoreRequest(req, responseDataPath);
+          } catch(error) {
+            winston.error(`The following request was not synced :${req.originalUrl}`);
+            winston.error("Reason: ", error);
+          }
+        }
+
+        let content = await fs.readFile(responseDataPath, 'utf8');
+
+        if(/ccstoreui\/v1\/pages\/layout\//.test(req.originalUrl)) {
+          try {
+            content = await this.replaceLayoutContent(content);
+          } catch(error) {
+            winston.info(error);
+            res.status(500);
+            res.send(error);
+          }
+        }
+
+        res.send(content);
+      });
+    }
+  }
+
+  setRoutes(app) {
+    app.use(bodyParser.json());
+    app.use(bodyParser.text());
+
+    // Disabling ETag because OCC tries to parse it and we don't have a valid value for this
+    app.set('etag', false);
+
+    app.get('/sync-all-apis/:status', async (req, res) => {
+      this.syncAllApiRequests = req.params.status === 'true';
+      res.json({ syncingRequests: this.syncAllApiRequests });
+    });
+
+    app.get('/proxy-all-apis/:status', async (req, res) => {
+      this.proxyAllApis = req.params.status === 'true';
+      res.json({ proxyAllApis: this.proxyAllApis });
+    });
+
+    app.get('/occ-server-details', (req, res) => {
+      res.json(endpointsMapping);
+    });
+
+    app.use('/proxy/:path(*)', (req, res) => {
+      this.proxyRequest(req, res, req.params.path);
+    });
+
+    app.get('/mock', (req, res) => {
+      const mockQueryParamPath = req.query.path;
+
+      if(!mockQueryParamPath) {
+        return res.json({ error: true, message: 'Please provide the "path" query param' });
+      }
+
+      const fullPathToMock = path.join(this.mocksPath, mockQueryParamPath);
+      if (fs.existsSync(fullPathToMock)) {
+        return res.json(fs.readJsonSync(fullPathToMock));
+      }
+
+      res.json({ error: true, message: `The mock "${fullPathToMock}" doesn't exist` });
+    });
+
+    app.get(['/js/:asset(*)', '/shared/:asset(*)'], async (req, res) => {
+      let oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, req.originalUrl);
+      let customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, req.originalUrl);
+
+      if(/main\.js/.test(req.params.asset)) {
+        oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, 'main.js');
+        customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, 'main.js');
+      }
+
+      try {
+        if(fs.existsSync(customAssetsPath)) {
+          return res.send(await fs.readFile(customAssetsPath));
+        }
+
+        if(fs.existsSync(oracleAssetsPath)) {
+          return res.send(await fs.readFile(oracleAssetsPath));
+        }
+
+        res.status(404);
+        res.send('File Not Found');
+      } catch(error) {
+        res.status(500);
+        res.send(error);
+      }
+    });
+
+    app.get('/oe-files/:file(*)', async (req, res) => {
+      return this.fileResponse(path.join(config.dir.project_root, 'files', '**', req.params.file), req, res);
+    });
+
+    app.get('/file/*/global/:file(*.js)', this.transpiledJsResponse.bind(this, 'app-level'));
+    app.get('/file/*/widget/:file(*.js)', this.transpiledJsResponse.bind(this, 'widgets'));
+    app.get('/file/*/widget/:version?/:widgetName/*/:file(*)', this.templateResponse.bind(this));
+    app.get('/ccstore/v1/images*', this.proxyRequest.bind(this));
+    app.get('/file/*/css/:file(*)', async (req, res) => {
+      return this.fileResponse(path.join(config.dir.transpiled, 'less', req.params.file), req, res);
+    });
+
+    app.get('*general/:file(*)', async (req, res) => {
+      return this.fileResponse(path.join(config.dir.project_root, 'files', 'general', req.params.file), req, res);
+    });
+
+    app.use(async (req, res, next) => {
+      if(/ccstore/.test(req.originalUrl)) {
+        return next('route');
+      }
+
+      try {
+        let htmlText = await fs.readFile(path.join(__dirname + '/index.html'), 'utf8');
+        const navState = {
+          "referrer": "/",
+          "statusCode": "200"
+        };
+
+        let pageNumber = req.originalUrl.match(/[0-9]+$/);
+        if(pageNumber) {
+          navState.pageNumber = pageNumber[0];
+        }
+
+        htmlText = htmlText.replace(/"\{\{ccNavState\}\}"/, JSON.stringify(navState));
+        res.send(htmlText);
+      } catch(error) {
+        res.status(500);
+        res.send(error);
+      }
+    });
+
+    this.setCCStoreRoutes(app);
+  }
+
   async run() {
     try {
       await this.setLocalFiles();
@@ -318,7 +559,7 @@ class LocalServer {
     const schemaPath = path.join(oracleApiDir, 'schema.json');
     const customSchemaPath = path.join(customApiDir, 'schema.json');
     const customResponsesPath = path.join(customApiDir, 'responses');
-    const mocksPath = config.dir.mocks;
+    this.mocksPath = config.dir.mocks;
 
     const schema = fs.readJsonSync(schemaPath, 'utf8');
     let customSchema;
@@ -349,12 +590,6 @@ class LocalServer {
 
       schemaPaths = Object.assign(schemaPaths, customSchemaPaths);
     }
-
-    app.use(bodyParser.json());
-    app.use(bodyParser.text());
-
-    // Disabling ETag because OCC tries to parse it and we don't have a valid value for this
-    app.set('etag', false);
 
     for(const requestPath in schemaPaths) {
       for(const method in schemaPaths[requestPath]) {
@@ -429,79 +664,6 @@ class LocalServer {
                 });
               }
 
-              const checkEquality = (object1, object2) => {
-                const optionsPropertyKey = '__options';
-                const options = object1[optionsPropertyKey] || {};
-                const matchType = options.matchType || 'string';
-                const match = (object1Value, object2Value) => {
-                  if(matchType === 'string') {
-                    return object1Value.toString() === object2Value.toString();
-                  }
-
-                  return new RegExp(object1Value.toString()).test(object2Value.toString());
-                };
-
-                if(typeof object1 === 'string') {
-                  return match(object1, object2);
-                }
-
-                const iterableObjectKeys = Object.keys(object2).filter(item => item !== optionsPropertyKey);
-
-                return iterableObjectKeys.every(objectKey => {
-                  const object1Value = object1[objectKey];
-                  const object2Value = object2[objectKey];
-
-                  if(typeof object2Value === 'undefined' || typeof object1Value === 'undefined') {
-                    return false;
-                  }
-
-                  if(typeof object1Value === 'object' && typeof object2Value === 'object') {
-                    return checkEquality(object1Value, object2Value);
-                  }
-
-                  return match(object1Value, object2Value);
-                });
-              };
-
-              const middleware = (req, res, next) => {
-                const queryParameters = requestDefinition.queryParameters;
-                const headers = requestDefinition.headers;
-                const hasQueryParameters = Object.keys(queryParameters).length;
-                const hasHeaders = Object.keys(headers).length;
-                const hasBody = Object.keys(requestDefinition.body).length; // Check with Object.keys even if it's an object
-                const body = requestDefinition.body;
-
-                // Workaround to set the sync argument in all endpoints
-                if(req.query.syncRemote) {
-                  req.__syncRemote = req.query.syncRemote;
-                  delete req.query.syncRemote;
-                }
-
-                if(!hasQueryParameters && !hasHeaders && !hasBody) {
-                  return next();
-                }
-
-                let matches = [];
-
-                if(hasQueryParameters) {
-                  matches.push(checkEquality(queryParameters, req.query));
-                }
-
-                if(hasHeaders) {
-                  matches.push(checkEquality(headers, req.headers));
-                }
-
-                if(hasBody) {
-                  matches.push(checkEquality(body, req.body));
-                }
-
-                if(!matches.every(match => match)) {
-                  return next('route');
-                }
-
-                next();
-              };
-
               if(/:id|:path/.test(requestEndpoint)) {
                 return;
               }
@@ -509,48 +671,10 @@ class LocalServer {
               endpointsMapping.push({
                 method: requestDefinition.method,
                 path: `*${requestEndpoint}`,
-                data: requestData
-              });
-
-              app[requestDefinition.method](`*${requestEndpoint}`, middleware, async (req, res) => {
-                res.header("OperationId", requestData.operationId);
-
-                if(this.proxyAllApis) {
-                  return this.proxyRequest(req, res);
-                }
-
-                Object.keys(responseDefinition).forEach(requestOption => {
-                  if(requestOption === 'headers') {
-                    res.set(responseDefinition.headers);
-                  }
-
-                  if(requestOption === 'statusCode') {
-                    res.status(responseDefinition.statusCode);
-                  }
-                });
-
-                if(/\/css\//.test(req.originalUrl)) {
-                  res.type('css');
-                }
-
-                // Sync local with remote
-                if(req.__syncRemote || this.syncAllApiRequests) {
-                  await this.syncStoreRequest(req, responseDataPath);
-                }
-
-                let content = await fs.readFile(responseDataPath, 'utf8');
-
-                if(/ccstoreui\/v1\/pages\/layout\//.test(req.originalUrl)) {
-                  try {
-                    content = await this.replaceLayoutContent(content);
-                  } catch(error) {
-                    winston.info(error);
-                    res.status(500);
-                    res.send(error);
-                  }
-                }
-
-                res.send(content);
+                requestData,
+                responseDataPath,
+                requestDefinition,
+                responseDefinition
               });
             } catch(error) {
               winston.info(`Warning: There is no valid response for the request "${requestData.operationId}"`);
@@ -562,91 +686,8 @@ class LocalServer {
       }
     }
 
-    app.get('/sync-all-apis/:status', async (req, res) => {
-      this.syncAllApiRequests = req.params.status === 'true';
-      res.json({ syncingRequests: this.syncAllApiRequests });
-    });
-
-    app.get('/proxy-all-apis/:status', async (req, res) => {
-      this.proxyAllApis = req.params.status === 'true';
-      res.json({ proxyAllApis: this.proxyAllApis });
-    });
-
-    app.get('/occ-server-details', (req, res) => {
-      res.json(endpointsMapping);
-    });
-
-    app.use('/proxy/:path(*)', (req, res) => {
-      this.proxyRequest(req, res, req.params.path);
-    });
-
-    app.get('/mock', (req, res) => {
-      const mockQueryParamPath = req.query.path;
-
-      if(!mockQueryParamPath) {
-        return res.json({ error: true, message: 'Please provide the "path" query param' });
-      }
-
-      const fullPathToMock = path.join(mocksPath, mockQueryParamPath);
-      if (fs.existsSync(fullPathToMock)) {
-        return res.json(fs.readJsonSync(fullPathToMock));
-      }
-
-      res.json({ error: true, message: `The mock "${fullPathToMock}" doesn't exist` });
-    });
-
-    app.get(['/js/:asset(*)', '/shared/:asset(*)'], async (req, res) => {
-      let oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, req.originalUrl);
-      let customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, req.originalUrl);
-
-      if(/main\.js/.test(req.params.asset)) {
-        oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, 'main.js');
-        customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, 'main.js');
-      }
-
-      try {
-        if(fs.existsSync(customAssetsPath)) {
-          return res.send(await fs.readFile(customAssetsPath));
-        }
-
-        if(fs.existsSync(oracleAssetsPath)) {
-          return res.send(await fs.readFile(oracleAssetsPath));
-        }
-
-        res.status(404);
-        res.send('File Not Found');
-      } catch(error) {
-        res.status(500);
-        res.send(error);
-      }
-    });
-
-    app.get('/oe-files/:file(*)', async (req, res) => {
-      return this.fileResponse(path.join(config.dir.project_root, 'files', '**', req.params.file), req, res);
-    });
-
-    app.get('/file/*/global/:file(*.js)', this.transpiledJsResponse.bind(this, 'app-level'));
-    app.get('/file/*/widget/:file(*.js)', this.transpiledJsResponse.bind(this, 'widgets'));
-    app.get('/file/*/widget/:version?/:widgetName/*/:file(*)', this.templateResponse.bind(this));
-    app.get('/ccstore/v1/images*', this.proxyRequest.bind(this));
-    app.get('/file/*/css/:file(*)', async (req, res) => {
-      return this.fileResponse(path.join(config.dir.transpiled, 'less', req.params.file), req, res);
-    });
-
-    app.get('*general/:file(*)', async (req, res) => {
-      return this.fileResponse(path.join(config.dir.project_root, 'files', 'general', req.params.file), req, res);
-    });
-
-    app.use(async (req, res) => {
-      try {
-        let htmlText = await fs.readFile(path.join(__dirname + '/index.html'), 'utf8');
-        res.send(htmlText);
-      } catch(error) {
-        res.status(500);
-        res.send(error);
-      }
-    });
-
+    // Setting routes
+    this.setRoutes(app);
     winston.info('Starting api server...');
 
     return new Promise(() => {

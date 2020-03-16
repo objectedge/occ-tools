@@ -28,6 +28,7 @@ var Configs = require('./Configs.js');
 var Restart = require('./Restart.js');
 var Deploy = require('./Deploy.js');
 var Instance = require('./Instance.js');
+var LocalServer = require('./LocalServer.js');
 var Environment = require('../core/env');
 
 function OccTools(logger) {
@@ -190,6 +191,7 @@ OccTools.prototype.do_force_update.help = (
 );
 
 OccTools.prototype.do_instance = Instance;
+OccTools.prototype.do_local_server = LocalServer;
 OccTools.prototype.do_deploy = Deploy;
 OccTools.prototype.do_download = Download;
 OccTools.prototype.do_upload = Upload;

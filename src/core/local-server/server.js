@@ -7,6 +7,7 @@ const express = require('express');
 const request = require('request');
 const glob = util.promisify(require('glob'));
 const bodyParser = require('body-parser');
+const urlParser = require('url');
 const mime = require('mime');
 const url = require('url');
 const exitHook = require("async-exit-hook");
@@ -260,6 +261,7 @@ class LocalServer {
       if(foundFile.length) {
         foundFile = foundFile[0];
         const type = mime.getType(foundFile);
+
         res.type(type);
         return res.send(await fs.readFile(foundFile));
       }
@@ -281,9 +283,23 @@ class LocalServer {
 
   async proxyRequest(req, res, originalPath) {
     try {
-      const url = `${this.domain}/${typeof originalPath === 'string' ? originalPath : req.originalUrl}`;
-      req.pipe(request(url, { rejectUnauthorized: false }).on('response', async response => {
+      originalPath = typeof originalPath === 'string' ? originalPath : req.originalUrl;
+
+      if(!originalPath.startsWith('/')) {
+        originalPath = `/${originalPath}`;
+      }
+
+      const url = (`${this.domain}${originalPath}`);
+      const authorization = req.headers.authorization || 'Bearer null';
+      req.headers.authorization = authorization;
+
+      req.pipe(request(url, { rejectUnauthorized: false }).on('response', response => {
         const setCookiesHeader = response.headers['set-cookie'];
+        const contentType = mime.getType(urlParser.parse(url).pathname);
+
+        if(contentType) {
+          response.headers['content-type'] = contentType;
+        }
 
         // Encodes any unicode character
         // This comes from Incapsula
@@ -539,165 +555,169 @@ class LocalServer {
     this.setCCStoreRoutes(app);
   }
 
-  async run() {
-    try {
-      await this.setLocalFiles();
-      await this.bundleFiles();
+  run() {
+    return new Promise(async (resolve, reject) => {
+      const customApiDir = config.dir.instanceDefinitions.customApi;
+      const oracleApiDir = config.dir.instanceDefinitions.oracleApi;
+      const schemaPath = path.join(oracleApiDir, 'schema.json');
+      const customSchemaPath = path.join(customApiDir, 'schema.json');
+      const customResponsesPath = path.join(customApiDir, 'responses');
+      this.mocksPath = config.dir.mocks;
 
-      if(this.options.updateHosts) {
-        winston.info('');
-        winston.info(`You can be asked for your root password! We need this to change your hosts file`);
-        winston.info(`If you want to set the hosts manually, please use the option --updateHosts=false`);
-        winston.info('');
+      if (!fs.existsSync(schemaPath)) {
+        return reject(`The main schema.json ${schemaPath} doesn't exist... run grab-all to sync your environment`);
       }
 
-      await this.setHosts(true);
-      winston.info(`Hosts set!`);
-    } catch(error) {
-      winston.error(error);
-    }
+      try {
+        await this.setLocalFiles();
+        await this.bundleFiles();
 
-    const ssl = await devcert.certificateFor(this.localHostname, { skipHostsFile: true });
-    const app = express();
-    const port = config.localServer.api.port;
-
-    const customApiDir = config.dir.instanceDefinitions.customApi;
-    const oracleApiDir = config.dir.instanceDefinitions.oracleApi;
-    const schemaPath = path.join(oracleApiDir, 'schema.json');
-    const customSchemaPath = path.join(customApiDir, 'schema.json');
-    const customResponsesPath = path.join(customApiDir, 'responses');
-    this.mocksPath = config.dir.mocks;
-
-    const schema = fs.readJsonSync(schemaPath, 'utf8');
-    let customSchema;
-
-    if (fs.existsSync(customSchemaPath)) {
-      customSchema = fs.readJsonSync(customSchemaPath);
-    }
-
-    try {
-      customResponses = fs.readdirSync(customResponsesPath);
-    } catch(error) {
-      winston.info(`It was not able to find any custom-response... using the default one`);
-    }
-
-    let schemaPaths = schema.paths;
-
-    if(customSchema) {
-      const customSchemaPaths = customSchema.paths;
-
-      Object.keys(customSchemaPaths).forEach(customSchemaPath => {
-        // just ignores the original schema path
-        if(Object.keys(schemaPaths).includes(customSchemaPath)) {
-          delete schemaPaths[customSchemaPath];
+        if(this.options.updateHosts) {
+          winston.info('');
+          winston.info(`You can be asked for your root password! We need this to change your hosts file`);
+          winston.info(`If you want to set the hosts manually, please use the option --updateHosts=false`);
+          winston.info('');
         }
 
-        winston.info(`Using custom schema path for ${customSchemaPath}...`);
-      });
+        await this.setHosts(true);
+        winston.info(`Hosts set!`);
+      } catch(error) {
+        return reject(error);
+      }
 
-      schemaPaths = Object.assign(schemaPaths, customSchemaPaths);
-    }
+      const ssl = await devcert.certificateFor(this.localHostname, { skipHostsFile: true });
+      const app = express();
+      const port = config.localServer.api.port;
 
-    for(const requestPath in schemaPaths) {
-      for(const method in schemaPaths[requestPath]) {
-        const requestData = schemaPaths[requestPath][method];
-        let responsePath = path.join(oracleApiDir, requestData.responses);
-        let customRequestsDefinitionPath;
+      const schema = fs.readJsonSync(schemaPath, 'utf8');
+      let customSchema;
 
-        if(customSchema) {
-          // Only replaces the response path if it contains a custom schema, otherwise just replace the response path
-          if(Object.keys(customSchema.paths).includes(requestPath) && customResponses.includes(requestData.operationId)) {
-            responsePath = path.join(customResponsesPath, requestData.operationId);
-            winston.info(`Using custom schema response for ${requestData.operationId}...`);
-          } else if(!Object.keys(customSchema.paths).includes(requestPath) && customResponses.includes(requestData.operationId)) {
-            customRequestsDefinitionPath = path.join(customResponsesPath, requestData.operationId);
+      if (fs.existsSync(customSchemaPath)) {
+        customSchema = fs.readJsonSync(customSchemaPath);
+      }
+
+      try {
+        customResponses = fs.readdirSync(customResponsesPath);
+      } catch(error) {
+        winston.info(`It was not able to find any custom-response... using the default one`);
+      }
+
+      let schemaPaths = schema.paths;
+
+      if(customSchema) {
+        const customSchemaPaths = customSchema.paths;
+
+        Object.keys(customSchemaPaths).forEach(customSchemaPath => {
+          // just ignores the original schema path
+          if(Object.keys(schemaPaths).includes(customSchemaPath)) {
+            delete schemaPaths[customSchemaPath];
           }
-        }
 
-        try {
-          let requestsDefinition = await glob(path.join(responsePath, '**', 'descriptor.json'));
+          winston.info(`Using custom schema path for ${customSchemaPath}...`);
+        });
 
-          // replace the response path by the custom response path
-          if(customRequestsDefinitionPath) {
-            const customRequestsDefinition = await glob(path.join(customRequestsDefinitionPath, '**', 'descriptor.json'));
-            requestsDefinition = requestsDefinition.map(definitionPath => {
-              const oracleLibsDirName = config.dir.instanceDefinitions.oracleLibsDirName;
-              const customLibsDirName = config.dir.instanceDefinitions.customLibsDirName;
-              const customDefinitionPathIndex = customRequestsDefinition.indexOf(definitionPath.replace(oracleLibsDirName, customLibsDirName));
+        schemaPaths = Object.assign(schemaPaths, customSchemaPaths);
+      }
 
-              if(customDefinitionPathIndex > -1) {
-                return customRequestsDefinition[customDefinitionPathIndex];
-              }
+      for(const requestPath in schemaPaths) {
+        for(const method in schemaPaths[requestPath]) {
+          const requestData = schemaPaths[requestPath][method];
+          let responsePath = path.join(oracleApiDir, requestData.responses);
+          let customRequestsDefinitionPath;
 
-              return definitionPath;
-            });
+          if(customSchema) {
+            // Only replaces the response path if it contains a custom schema, otherwise just replace the response path
+            if(Object.keys(customSchema.paths).includes(requestPath) && customResponses.includes(requestData.operationId)) {
+              responsePath = path.join(customResponsesPath, requestData.operationId);
+              winston.info(`Using custom schema response for ${requestData.operationId}...`);
+            } else if(!Object.keys(customSchema.paths).includes(requestPath) && customResponses.includes(requestData.operationId)) {
+              customRequestsDefinitionPath = path.join(customResponsesPath, requestData.operationId);
+            }
+          }
 
-            // adding new custom responses to request definitions
-            customRequestsDefinition.forEach(itemPath => {
-              if(!requestsDefinition.includes(itemPath)) {
-                const indexOfDefaultdescriptor = requestsDefinition.indexOf(path.join(responsePath, 'default', 'descriptor.json'));
+          try {
+            let requestsDefinition = await glob(path.join(responsePath, '**', 'descriptor.json'));
 
-                // Don't keep the default response when we have custom response
-                if(indexOfDefaultdescriptor > -1) {
-                  requestsDefinition.splice(requestsDefinition[indexOfDefaultdescriptor], 1);
+            // replace the response path by the custom response path
+            if(customRequestsDefinitionPath) {
+              const customRequestsDefinition = await glob(path.join(customRequestsDefinitionPath, '**', 'descriptor.json'));
+              requestsDefinition = requestsDefinition.map(definitionPath => {
+                const oracleLibsDirName = config.dir.instanceDefinitions.oracleLibsDirName;
+                const customLibsDirName = config.dir.instanceDefinitions.customLibsDirName;
+                const customDefinitionPathIndex = customRequestsDefinition.indexOf(definitionPath.replace(oracleLibsDirName, customLibsDirName));
+
+                if(customDefinitionPathIndex > -1) {
+                  return customRequestsDefinition[customDefinitionPathIndex];
                 }
 
-                requestsDefinition.push(itemPath);
+                return definitionPath;
+              });
+
+              // adding new custom responses to request definitions
+              customRequestsDefinition.forEach(itemPath => {
+                if(!requestsDefinition.includes(itemPath)) {
+                  const indexOfDefaultdescriptor = requestsDefinition.indexOf(path.join(responsePath, 'default', 'descriptor.json'));
+
+                  // Don't keep the default response when we have custom response
+                  if(indexOfDefaultdescriptor > -1) {
+                    requestsDefinition.splice(requestsDefinition[indexOfDefaultdescriptor], 1);
+                  }
+
+                  requestsDefinition.push(itemPath);
+                }
+              });
+            }
+
+            requestsDefinition.forEach(definitionPath => {
+              let descriptor;
+
+              try {
+                descriptor = fs.readJsonSync(definitionPath);
+              } catch(error) {
+                winston.info(`Warning: There is no valid descriptor for the request "${requestData.operationId}"`);
+              }
+
+              try {
+                const responseDataPath = path.join(definitionPath, '..', descriptor.response.dataPath);
+                const requestDefinition = descriptor.request;
+                const responseDefinition = descriptor.response;
+                let requestEndpoint = `${schema.basePath}${requestPath.replace('{id}', ':id').replace('{path: .*}', ':path').replace('{}', ':path').replace('{bundle}', ':bundle')}`;
+
+                if(requestDefinition.queryParameters) {
+                  Object.keys(requestDefinition.queryParameters).forEach(queryParamKey => {
+                    if(/^:/.test(queryParamKey)) {
+                      requestEndpoint = requestEndpoint.replace(queryParamKey, requestDefinition.queryParameters[queryParamKey]);
+                      delete requestDefinition.queryParameters[queryParamKey]
+                    }
+                  });
+                }
+
+                if(/:id|:path/.test(requestEndpoint)) {
+                  return;
+                }
+
+                endpointsMapping.push({
+                  method: requestDefinition.method,
+                  path: `*${requestEndpoint}`,
+                  requestData,
+                  responseDataPath,
+                  requestDefinition,
+                  responseDefinition
+                });
+              } catch(error) {
+                winston.info(`Warning: There is no valid response for the request "${requestData.operationId}"`);
               }
             });
+          } catch(error) {
+            winston.info(error);
           }
-
-          requestsDefinition.forEach(definitionPath => {
-            let descriptor;
-
-            try {
-              descriptor = fs.readJsonSync(definitionPath);
-            } catch(error) {
-              winston.info(`Warning: There is no valid descriptor for the request "${requestData.operationId}"`);
-            }
-
-            try {
-              const responseDataPath = path.join(definitionPath, '..', descriptor.response.dataPath);
-              const requestDefinition = descriptor.request;
-              const responseDefinition = descriptor.response;
-              let requestEndpoint = `${schema.basePath}${requestPath.replace('{id}', ':id').replace('{path: .*}', ':path').replace('{}', ':path').replace('{bundle}', ':bundle')}`;
-
-              if(requestDefinition.queryParameters) {
-                Object.keys(requestDefinition.queryParameters).forEach(queryParamKey => {
-                  if(/^:/.test(queryParamKey)) {
-                    requestEndpoint = requestEndpoint.replace(queryParamKey, requestDefinition.queryParameters[queryParamKey]);
-                    delete requestDefinition.queryParameters[queryParamKey]
-                  }
-                });
-              }
-
-              if(/:id|:path/.test(requestEndpoint)) {
-                return;
-              }
-
-              endpointsMapping.push({
-                method: requestDefinition.method,
-                path: `*${requestEndpoint}`,
-                requestData,
-                responseDataPath,
-                requestDefinition,
-                responseDefinition
-              });
-            } catch(error) {
-              winston.info(`Warning: There is no valid response for the request "${requestData.operationId}"`);
-            }
-          });
-        } catch(error) {
-          winston.info(error);
         }
       }
-    }
 
-    // Setting routes
-    this.setRoutes(app);
-    winston.info('Starting api server...');
+      // Setting routes
+      this.setRoutes(app);
+      winston.info('Starting api server...');
 
-    return new Promise(() => {
       const server = https.createServer(ssl, app).listen(port, () => {
         winston.info(`Running api server on port ${port}`);
       });
@@ -711,8 +731,9 @@ class LocalServer {
             winston.error(error);
           }
 
-          winston.info('Done!')
+          winston.info('Done!');
           callback();
+          resolve();
         });
       });
     });
@@ -731,7 +752,6 @@ module.exports = async function(action, options, callback) {
         callback();
     }
   } catch(errorResponse) {
-    winston.error(errorResponse);
     callback(errorResponse);
   }
 };

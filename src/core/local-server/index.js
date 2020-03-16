@@ -1,6 +1,3 @@
-const EventEmitter = require('events').EventEmitter;
-const util = require('util');
-
 const OCC = require('../occ');
 const Auth = require('../auth');
 const libraries = require('./grab/libraries');
@@ -8,10 +5,8 @@ const apiSchema = require('./grab/api-schema');
 const pagesResponse = require('./grab/pages-response');
 const server = require('./server');
 
-class LocalServer extends EventEmitter {
+class LocalServer {
   constructor(environment, options) {
-    super();
-
     if (!environment) {
       throw new Error('Environment not defined.');
     }
@@ -23,47 +18,50 @@ class LocalServer extends EventEmitter {
   }
 
   grabLibs(options) {
-    var self = this;
-    libraries.call(self, 'grab-all', options, function(error) {
-      if (error) {
-        self.emit('error', error);
-      } else {
-        self.emit('complete', 'Grab Libraries Completed!');
-      }
+    return new Promise((resolve, reject) => {
+      libraries.call(this, 'grab-all', options, error => {
+        if(error) {
+          return reject(error);
+        }
+
+        resolve('Grab Libraries Completed!');
+      });
     });
   }
 
   grabApiSchema(options) {
-    var self = this;
-    apiSchema.call(self, 'grab', options, function(error) {
-      if (error) {
-        self.emit('error', error);
-      } else {
-        self.emit('complete', 'Grab Api Schema Completed!');
-      }
+    return new Promise((resolve, reject) => {
+      apiSchema.call(this, 'grab', options, error => {
+        if(error) {
+          return reject(error);
+        }
+
+        resolve('Grab Api Schema Completed!');
+      });
     });
   }
 
   grabPagesResponse(options) {
-    var self = this;
-    pagesResponse.call(self, options.type, options, function(error) {
-      if (error) {
-        self.emit('error', error);
-      } else {
-        self.emit('complete', 'Grab Pages Response Completed!');
-      }
+    return new Promise((resolve, reject) => {
+      pagesResponse.call(this, options.type, options, error => {
+        if(error) {
+          return reject(error);
+        }
+
+        resolve('Grab Pages Response Completed!');
+      });
     });
   }
 
   runLocalServer(options) {
-    var self = this;
+    return new Promise((resolve, reject) => {
+      server.call(this, 'run', options, error => {
+        if(error) {
+          return reject(error);
+        }
 
-    server.call(self, 'run', options, function(error) {
-      if (error) {
-        self.emit('error', error);
-      } else {
-        self.emit('complete', 'Grab Pages Response Completed!');
-      }
+        resolve('Grab Pages Response Completed!');
+      });
     });
   }
 }

@@ -27,43 +27,46 @@ util.inherits(LocalServer, Cmdln);
 
 LocalServer.prototype.init = async function(opts, args, callback) {
   let environments;
+
   const errorMessage = () => {
     winston.error(`Please provide a valid environment key. You can find it at ${config.dir.occToolsProject}`);
   };
+
   try {
     environments = (await fs.readJSON(config.dir.occToolsProject)).environments;
+  } catch (error) {
+    return callback(error);
   }
-  catch (error) {
-    return callbacl(error);
-  }
+
   if (!opts.envkey) {
     errorMessage();
     return callback(true);
   }
+
   const foundEnvironment = environments.filter(env => env.name === opts.envkey);
   if (opts.envkey && !foundEnvironment.length) {
     errorMessage();
     return callback(true);
   }
+
   domain = foundEnvironment[0].url;
   // Cmdln class handles `opts.help`.
   Cmdln.prototype.init.apply(this, arguments);
 }
 
 LocalServer.prototype.do_grab_libs = function(subcmd, opts, args, callback) {
-  login(error => {
+  login(async error => {
     if (error) {
       return callback(error);
     }
-    var instance = new LocalServerInstance('admin', { domain });
-    instance.on('complete', msg => {
-      winston.info(msg);
-      return callback();
-    });
-    instance.on('error', err => {
-      return callback(err);
-    });
-    instance.grabLibs();
+
+    try {
+      const instance = new LocalServerInstance('admin', { domain });
+      winston.info(await instance.grabLibs());
+      callback();
+    } catch(error) {
+      callback(error);
+    }
   });
 }
 
@@ -72,19 +75,18 @@ LocalServer.prototype.do_grab_libs.help = (
 );
 
 LocalServer.prototype.do_grab_api_schema = function(subcmd, opts, args, callback) {
-  login(error => {
+  login(async error => {
     if (error) {
       return callback(error);
     }
-    var instance = new LocalServerInstance('admin', { domain });
-    instance.on('complete', msg => {
-      winston.info(msg);
-      return callback();
-    });
-    instance.on('error', err => {
-      return callback(err);
-    });
-    instance.grabApiSchema();
+
+    try {
+      const instance = new LocalServerInstance('admin', { domain });
+      winston.info(await instance.grabApiSchema());
+      callback();
+    } catch(error) {
+      callback(error);
+    }
   });
 }
 
@@ -93,19 +95,18 @@ LocalServer.prototype.do_grab_api_schema.help = (
 );
 
 LocalServer.prototype.do_grab_pages_response = function(subcmd, opts, args, callback) {
-  login(error => {
+  login(async error => {
     if (error) {
       return callback(error);
     }
-    var instance = new LocalServerInstance('admin', { domain });
-    instance.on('complete', msg => {
-      winston.info(msg);
-      return callback();
-    });
-    instance.on('error', err => {
-      return callback(err);
-    });
-    instance.grabPagesResponse(opts);
+
+    try {
+      const instance = new LocalServerInstance('admin', { domain });
+      winston.info(await instance.grabPagesResponse(opts));
+      callback();
+    } catch(error) {
+      callback(error);
+    }
   });
 }
 
@@ -121,21 +122,41 @@ LocalServer.prototype.do_grab_pages_response.help = (
   'Grab Pages Response from OCC.\n\n'
 );
 
-LocalServer.prototype.do_run = function (subcmd, opts, args, callback) {
-  login(error => {
+LocalServer.prototype.do_grab_all = function(subcmd, opts, args, callback) {
+  login(async error => {
     if (error) {
       return callback(error);
     }
-    var instance = new LocalServerInstance('admin', { domain });
 
-    instance.on('complete', msg => {
-      winston.info(msg);
-      return callback();
-    });
-    instance.on('error', err => {
-      return callback(err);
-    });
-    instance.runLocalServer({ updateHosts: opts.updateHosts });
+    try {
+      const instance = new LocalServerInstance('admin', { domain });
+      winston.info(await instance.grabLibs());
+      winston.info(await instance.grabApiSchema());
+      winston.info(await instance.grabPagesResponse({ type: 'all' }));
+      callback();
+    } catch(error) {
+      callback(error);
+    }
+  });
+}
+
+LocalServer.prototype.do_grab_all.help = (
+  'Grab Libraries, Schema and pages responses from OCC.\n\n'
+);
+
+LocalServer.prototype.do_run = function (subcmd, opts, args, callback) {
+  login(async error => {
+    if (error) {
+      return callback(error);
+    }
+
+    try {
+      const instance = new LocalServerInstance('admin', { domain });
+      winston.info(await instance.runLocalServer({ updateHosts: opts.updateHosts }));
+      callback();
+    } catch(error) {
+      callback(error);
+    }
   });
 }
 

@@ -25,7 +25,7 @@ class Libraries {
       let mainJSRequest;
 
       try {
-        console.log('Requesting the main page to get the main.js.map file...');
+        winston.info('Requesting the main page to get the main.js.map file...');
         mainJSRequest = await this.makeRequest(this.instanceOptions.domain);
       } catch(error) {
         return reject(error);
@@ -40,7 +40,7 @@ class Libraries {
 
       const mainJSFileMapPath = `${mainJSFilePath[0]}.map`;
 
-      console.log('Requesting the main.js.map file...');
+      winston.info('Requesting the main.js.map file...');
 
       try {
         const mainJSMAPRequest = await this.makeRequest(mainJSFileMapPath);
@@ -56,7 +56,7 @@ class Libraries {
   }
 
   makeRequest(url) {
-    console.log(`Requesting ${url}...`);
+    winston.info(`Requesting ${url}...`);
 
     const requestConfigs = {
       url : url
@@ -84,10 +84,10 @@ class Libraries {
       fs.writeFile(destDir, fileContent, { encoding: 'utf8' }, function(error) {
         if(error) {
           reject(error);
-          return console.log(error);
+          return winston.error(error);
         }
 
-        console.log(`File ${destDir} saved successfully!`);
+        winston.info(`File ${destDir} saved successfully!`);
         allDependencies.push(destDir);
         resolve(destDir);
       });
@@ -96,8 +96,15 @@ class Libraries {
 
   grabMissingDependencies() {
     return new Promise(async (resolve, reject) => {
-      console.log('');
-      console.log('Grabbing missing dependencies from the RequireJS configs...');
+      const extraDependencies = [
+        '/shared/js/viewModels/integrationViewModel',
+        '/shared/js/viewModels/multiCartViewModel',
+        '/shared/js/viewModels/purchaseList',
+        '/shared/js/viewModels/purchaseListListing'
+      ]
+
+      winston.info('');
+      winston.info('Grabbing missing dependencies from the RequireJS configs...');
 
       let mainJSFile;
 
@@ -116,7 +123,12 @@ class Libraries {
         return reject(`No Oracle Paths found in ${path.join(oracleLibsDir, 'main.js')}`);
       }
 
-      const missingDependencies = Object.values(requireJSPaths).filter(function iterateOverPaths(requirePath) {
+      // Merging extra dependencies
+      extraDependencies.forEach(dependency => {
+        requireJSPaths[dependency] = dependency;
+      });
+
+      let missingDependencies = Object.values(requireJSPaths).filter(function iterateOverPaths(requirePath) {
         if(Array.isArray(requirePath)) {
           return requirePath.every(iterateOverPaths);
         }
@@ -189,7 +201,7 @@ class Libraries {
 
       const mainJSFileMapPath = `${mainJSFilePath[0]}.map`;
 
-      console.log('Requesting the store-libs.js.map file...');
+      winston.info('Requesting the store-libs.js.map file...');
 
       try {
         const storeLibsMapRequest = await this.makeRequest(mainJSFileMapPath);
@@ -261,7 +273,7 @@ class Libraries {
             try {
               fs.ensureDirSync(baseDirName);
             } catch(error) {
-              console.log(error);
+              winston.error(error);
             }
           }
 

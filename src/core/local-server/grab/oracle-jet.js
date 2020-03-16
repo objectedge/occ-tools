@@ -16,7 +16,7 @@ const libsOracleJetPath = path.join(oracleLibsDir, 'js', 'oraclejet', 'js', 'lib
 
 class OracleJet {
   getReleaseIdByTagName(tagName) {
-    console.log(`Fetching Oracle Jet Release ${tagName}...`);
+    winston.info(`Fetching Oracle Jet Release ${tagName}...`);
 
     return new Promise((resolve, reject) => {
       const findRelease = async (page = 1) => {
@@ -52,7 +52,7 @@ class OracleJet {
     return new Promise((resolve, reject) => {
       const destDir = util.format(libsOracleJetPath, `v${tagName}`);
 
-      console.log(`Copying files to ${destDir} ...`);
+      winston.info(`Copying files to ${destDir} ...`);
 
       fs.readdir(unzippedPath, async (error, files) => {
         const rootFolder = files[0];
@@ -77,7 +77,7 @@ class OracleJet {
 
   extractZip(tagName) {
     return new Promise((resolve, reject) => {
-      console.log(`Extracting Oracle Jet Zip file...`);
+      winston.info(`Extracting Oracle Jet Zip file...`);
 
       extract(oracleZipPath, { dir: unzippedPath }, async (error) => {
         if(error) {
@@ -99,7 +99,7 @@ class OracleJet {
       try {
         const release = await this.getReleaseIdByTagName(tagName);
         const downloadUrl = release.zipball_url;
-        console.log(`Downloading release ${tagName}...`);
+        winston.info(`Downloading release ${tagName}...`);
 
         request.get({
           headers: {
@@ -110,7 +110,7 @@ class OracleJet {
           const fws = fs.createWriteStream(oracleZipPath);
 
           response.pipe(fws);
-          response.on('response', console.log)
+          response.on('response', winston.info)
           response.on('end', async () => {
             await this.extractZip(tagName);
             resolve();

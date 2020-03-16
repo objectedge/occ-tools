@@ -32,7 +32,7 @@ var tempRootFolder = path.join(os.tmpdir(), 'occ-tools-data');
 var mocksDirName = 'mocks';
 
 var instanceId = baseUrl.match(/ccadmin-(.*?)\./)[1];
-var instanceDefinitionsRootPath = path.join(configsData.projects.current.path, 'oracle-resources');
+var instanceDefinitionsRootPath = path.join(configsData.projects.current.path, '.oracle-resources');
 var librariesDir = path.join(instanceDefinitionsRootPath, 'assets', 'libraries');
 var apiDir = path.join(instanceDefinitionsRootPath, 'api');
 

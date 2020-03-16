@@ -2,6 +2,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const util = require('util');
 const less = require('less');
+const request = require('request');
 const winston = require('winston');
 const chokidar = require('chokidar');
 const glob = util.promisify(require('glob'));
@@ -22,6 +23,27 @@ class Transpiler {
       sourceMapType: '#eval-source-map',
       widgets: false,
       appLevel: true
+    });
+  }
+
+  getBaseCss() {
+    return new Promise((resolve, reject) => {
+      const url = (`${this.instanceOptions.domain}/file/css/base.css`);
+
+      request(url, { rejectUnauthorized: false }, (error, response, body) => {
+        if(error) {
+          return reject(error);
+        }
+
+        let baseCSS = '';
+        const baseCSSMatch = body.match(/[^]+?(?:\/\*\!OCC_LESS)/);
+
+        if(baseCSSMatch) {
+          baseCSS = baseCSSMatch[0].replace('/*!OCC_LESS', '');
+        }
+
+        resolve(baseCSS);
+      });
     });
   }
 
@@ -56,17 +78,20 @@ class Transpiler {
         .map(lessFile => `@import "${lessFile}";`)
         .join("");
 
+      const oracleBaseCSS = await this.getBaseCss();
+
       const commonLessSource = () => {
         let lessSourceToRender = "";
-        lessSourceToRender += `/*__local_css_delete__*/@import "${bootstrapPath}";/*__proxy_delete_end__*/`;
+        lessSourceToRender += `/*__local_css_delete__*/@import "${bootstrapPath}";/*__local_css_delete__end*/`;
         lessSourceToRender += importWidgetsLessFiles;
-        lessSourceToRender += `/*__local_css_delete__*/${importThemeLessFiles}/*__proxy_delete_end__*/`;
+        lessSourceToRender += `/*__local_css_delete__*/${importThemeLessFiles}/*__local_css_delete__end*/`;
         return lessSourceToRender;
       };
 
       const themeLessSource = () => {
         let lessSourceToRender = "";
-        lessSourceToRender += `/*__local_css_delete__*/@import "${bootstrapPath}";/*__proxy_delete_end__*/`;
+        lessSourceToRender += `${oracleBaseCSS}`;
+        lessSourceToRender += `/*__local_css_delete__*/@import "${bootstrapPath}";/*__local_css_delete__end*/`;
         lessSourceToRender += `${importThemeLessFiles}`;
         return lessSourceToRender;
       };
@@ -86,7 +111,7 @@ class Transpiler {
             const rendered = await less.render(lessSourceToRender);
             let code = rendered.css;
             code = code.replace(
-              /\/\*__local_css_delete__\*\/[^]+?\/\*__proxy_delete_end__\*\//gm,
+              /\/\*__local_css_delete__\*\/[^]+?\/\*__local_css_delete__end\*\//gm,
               ""
             );
             await fs.writeFile(outputFile, code);

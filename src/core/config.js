@@ -58,6 +58,32 @@ var instanceDefinitionsDir = {
   customApi: path.join(apiDir, customDirName)
 };
 
+var allEnvironments = occToolsConfigsCore.getCurrentEnvironments();
+var envDetailsFromProject = allEnvironments.find(env => env.name === configsData.projects.current.env);
+
+var currentEnvironmentDetails = {
+  name: configsData.projects.current.name,
+  env: configsData.projects.current.env,
+  url: configsData.projects.current.url,
+  store: baseUrl.replace('ccadmin', 'ccstore'),
+  dns: baseUrl.replace('ccadmin', 'ccstore'),
+  local: baseUrl.replace('ccadmin', 'loca.ccstore')
+}
+
+if(envDetailsFromProject) {
+  if(envDetailsFromProject.store) {
+    currentEnvironmentDetails.store = envDetailsFromProject.store;
+  }
+
+  if(envDetailsFromProject.dns) {
+    currentEnvironmentDetails.dns = envDetailsFromProject.dns;
+  }
+
+  if(envDetailsFromProject.local) {
+    currentEnvironmentDetails.local = envDetailsFromProject.local;
+  }
+}
+
 var _configDescriptor = {
   project_name: configsData.projects.current.name,
   configsDir: configsDir,
@@ -92,11 +118,7 @@ var _configDescriptor = {
   environments: occToolsConfigsCore.getCurrentEnvironments(),
   environment: {
     current: configsData.projects.current.env,
-    details: {
-      name: configsData.projects.current.name,
-      env: configsData.projects.current.env,
-      url: configsData.projects.current.url
-    }
+    details: currentEnvironmentDetails
   },
   occToolsPath: path.join(__dirname, '..'),
   occToolsUserCommandsPath: path.join(configsDir, 'user-commands'),
@@ -106,7 +128,9 @@ var _configDescriptor = {
     adminX: baseUrl + '/ccadminx/custom/v1/',
     search: baseUrl + '/gsadmin/v1/',
     adminUI: baseUrl + '/ccadminui/v1/',
-    store: baseUrl.replace('ccadmin', 'ccstore')
+    store: currentEnvironmentDetails.store,
+    dns: currentEnvironmentDetails.dns,
+    local: currentEnvironmentDetails.local
   },
   authEndpoints: {
     baseUrl: baseUrl,

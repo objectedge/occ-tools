@@ -28,7 +28,7 @@ class Transpiler {
 
   getBaseCss() {
     return new Promise((resolve, reject) => {
-      const url = (`${this.instanceOptions.domain}/file/css/base.css`);
+      const url = (`${config.endpoints.dns}/file/css/base.css`);
 
       request(url, { rejectUnauthorized: false }, (error, response, body) => {
         if(error) {

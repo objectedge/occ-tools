@@ -16,8 +16,8 @@ class ApiSchema {
     this.options = options;
     this.instanceOptions = instance.options;
 
-    this.schemaURL = `${this.instanceOptions.domain}/ccstore/v1/metadata-catalog`;
-    this.registryEndpoint = `${this.instanceOptions.domain}/ccstoreui/v1/registry`;
+    this.schemaURL = `${config.endpoints.dns}/ccstore/v1/metadata-catalog`;
+    this.registryEndpoint = `${config.endpoints.dns}/ccstoreui/v1/registry`;
   }
 
   makeRequest(url) {
@@ -85,7 +85,7 @@ class ApiSchema {
 
             try {
               if(method === 'get' && !/\{\}/.test(endpointMapData.url)) {
-                endpointMapResponse = await this.makeRequest(`${this.instanceOptions.domain}${endpointMapData.url}`);
+                endpointMapResponse = await this.makeRequest(`${config.endpoints.dns}${endpointMapData.url}`);
                 sampleResponse = JSON.parse(endpointMapResponse.body);
               }
             } catch(error) {}
@@ -172,7 +172,7 @@ class ApiSchema {
                 let stringifiedResponseData = JSON.stringify(responseData, null, 2);
 
                 if(stringifiedResponseData) {
-                  // stringifiedResponseData = stringifiedResponseData.replace(/localhost:[0-9]+?\//g, `localhost:${configs.server.karma.port}/`).replace(/"httpPort":\s[0-9]+?,/g, `"httpPort": ${configs.server.karma.port},`);
+                  stringifiedResponseData = stringifiedResponseData.replace(/https?:\/\/localhost:[0-9]+?\//g, config.endpoints.local);
                 }
 
                 await fs.outputJSON(dataPath, JSON.parse(stringifiedResponseData), { spaces: 2 });

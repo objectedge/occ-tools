@@ -22,8 +22,8 @@ class LocalServer {
   constructor(options, instance) {
     this.options = options;
     this.instanceOptions = instance.options;
-    this.domain = this.instanceOptions.domain;
-    this.localDomain = this.domain.replace(/:\/\//, '://local.');
+    this.domain = config.endpoints.dns;
+    this.localDomain = config.endpoints.local;
     this.hostname = url.parse(this.domain).hostname;
     this.localHostname = url.parse(this.localDomain).hostname;
     this.hostsManager = new HostsManager({ hostname: this.localHostname, ip: '127.0.0.1' });
@@ -274,11 +274,8 @@ class LocalServer {
     }
   }
 
-  // TODO
-  // move localDomain from the local-server to the instance option level
   replaceRemoteLinks(body) {
-    const localDomain = this.instanceOptions.domain.replace(/:\/\//, '://local.');
-    return body.replace(new RegExp(this.instanceOptions.domain, 'g'), localDomain);
+    return body.replace(new RegExp(this.domain, 'g'), this.localDomain);
   }
 
   async proxyRequest(req, res, originalPath) {

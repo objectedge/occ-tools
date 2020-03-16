@@ -6,15 +6,12 @@ const url = require('url');
 const request = util.promisify(require('request'));
 const config = require('../../config');
 
-// const auth = `${configs.application.HTTPAuthCredentials.user}:${configs.application.HTTPAuthCredentials.password}`
-// const baseUrl = configs.application.HTTPAuth ? `https://${auth}@${configs.application.occStoreUrl}` : configs.application.occStoreUrl;
-
 class PagesResponse {
   constructor(options, instance) {
     this.options = options;
     this.instanceOptions = instance.options;
 
-    this.baseUrl = this.instanceOptions.domain;
+    this.baseUrl = config.endpoints.dns;
     this.collectionsEndpoint = `${this.baseUrl}/ccstoreui/v1/collections/rootCategory?catalogId=cloudCatalog&maxLevel=5&expand=childCategories&fields=childCategories.repositoryId,childCategories.displayName,childCategories.route,childCategories.childCategories`;
 
     this.pagesDataEndpoints = {
@@ -63,11 +60,8 @@ class PagesResponse {
     });
   }
 
-  // TODO
-  // move localDomain from the local-server to the instance option level
   replaceRemoteLinks(body) {
-    const localDomain = this.instanceOptions.domain.replace(/:\/\//, '://local.');
-    return body.replace(new RegExp(this.instanceOptions.domain, 'g'), localDomain);
+    return body.replace(new RegExp(config.endpoints.dns, 'g'), config.endpoints.local);
   }
 
   all() {

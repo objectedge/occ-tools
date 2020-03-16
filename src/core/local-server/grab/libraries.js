@@ -10,7 +10,6 @@ let oracleJetVersionDefault = '2.0.2'; //Defaults to 2.0.2, we will double check
 let oracleJetVersion = null;
 
 const oracleLibsDir = path.join(config.dir.instanceDefinitions.oracleLibs);
-// const httpAuth = "Basic " + new Buffer('admin:admin').toString("base64");
 const allDependencies = [];
 
 class Libraries {
@@ -26,12 +25,12 @@ class Libraries {
 
       try {
         winston.info('Requesting the main page to get the main.js.map file...');
-        mainJSRequest = await this.makeRequest(this.instanceOptions.domain);
+        mainJSRequest = await this.makeRequest(config.endpoints.dns);
       } catch(error) {
         return reject(error);
       }
 
-      let regexPattern = new RegExp(`${this.instanceOptions.domain}.*main\.js`, 'g');
+      let regexPattern = new RegExp(`${config.endpoints.dns}.*main\.js`, 'g');
       let mainJSFilePath = mainJSRequest.body.match(regexPattern);
 
       if(!mainJSFilePath) {
@@ -61,12 +60,6 @@ class Libraries {
     const requestConfigs = {
       url : url
     };
-
-    // if(instancesConfig.application.HTTPAuth) {
-    //   requestConfigs.headers = {
-    //     "Authorization" : httpAuth
-    //   }
-    // }
 
     return new Promise((resolve, reject) => {
       request(requestConfigs, (error, response, body) => {
@@ -148,7 +141,7 @@ class Libraries {
           return;
         }
 
-        const missingFileURL = `${this.instanceOptions.domain}${missingDependencyPath}.js`;
+        const missingFileURL = `${config.endpoints.dns}${missingDependencyPath}.js`;
         filesRequestsPromises.push(
           new Promise(async (resolve, reject) => {
             try {
@@ -187,12 +180,12 @@ class Libraries {
       let storeLibsRequest;
 
       try {
-        storeLibsRequest = await this.makeRequest(this.instanceOptions.domain);
+        storeLibsRequest = await this.makeRequest(config.endpoints.dns);
       } catch(error) {
         return reject(error);
       }
 
-      let regexPattern = new RegExp(`${this.instanceOptions.domain}.*store-libs\.js`, 'g');
+      let regexPattern = new RegExp(`${config.endpoints.dns}.*store-libs\.js`, 'g');
       let mainJSFilePath = storeLibsRequest.body.match(regexPattern);
 
       if(!mainJSFilePath) {

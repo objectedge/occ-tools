@@ -289,6 +289,9 @@ class LocalServer {
       const url = (`${this.domain}${originalPath}`);
       const authorization = req.headers.authorization || 'Bearer null';
       req.headers.authorization = authorization;
+      req.headers['cache-control'] = 'no-transform';
+
+      winston.info(`Proxying request ${url}`);
 
       req.pipe(request(url, { rejectUnauthorized: false }).on('response', response => {
         const setCookiesHeader = response.headers['set-cookie'];

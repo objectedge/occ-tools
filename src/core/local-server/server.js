@@ -164,6 +164,9 @@ class LocalServer {
 
       const remoteUrl = `${this.domain}/${req.originalUrl}`;
 
+      const headers = JSON.stringify(req.headers);
+      req.headers = JSON.parse(headers.replace(new RegExp(this.localHostname, 'g'), this.hostname));
+
       req.pipe(request(remoteUrl, requestOptions, async (error, response, body) => {
         if(error) {
           reject(error);
@@ -287,11 +290,10 @@ class LocalServer {
       }
 
       const url = (`${this.domain}${originalPath}`);
-      const authorization = req.headers.authorization || 'Bearer null';
-      req.headers.authorization = authorization;
-      req.headers['cache-control'] = 'no-transform';
-
       winston.info(`Proxying request ${url}`);
+
+      const headers = JSON.stringify(req.headers);
+      req.headers = JSON.parse(headers.replace(new RegExp(this.localHostname, 'g'), this.hostname));
 
       req.pipe(request(url, { rejectUnauthorized: false }).on('response', response => {
         const setCookiesHeader = response.headers['set-cookie'];
@@ -557,6 +559,30 @@ class LocalServer {
 
   run() {
     return new Promise(async (resolve, reject) => {
+
+      // const headers = {
+      //   host: 'shop-test2.motorolasolutions.com',
+      //   connection: 'keep-alive',
+      //   pragma: 'no-cache',
+      //   'cache-control': 'no-cache',
+      //   origin: 'https://shop-test2.motorolasolutions.com',
+      //   'sec-fetch-dest': 'font',
+      //   'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36',
+      //   accept: '*/*',
+      //   'sec-fetch-site': 'same-origin',
+      //   'sec-fetch-mode': 'cors',
+      //   referer: 'https://shop-test2.motorolasolutions.com/file/v4602491664175275731/css/base.css?occsite=siteUS',
+      //   'accept-encoding': 'gzip, deflate, br',
+      //   'accept-language': 'en-US,en;q=0.9',
+      //   cookie: 'visid_incap_1217051=9h+4hqneSOSL/x8it9w3OlHuo10AAAAAQUIPAAAAAAC8sokpgyp6xO4NvhjyFCOg; visid_incap_1695016=QIlz2ANpRNK7TRniSCgSb6SFpF0AAAAAQUIPAAAAAADadVhpcbKYLRRxNVy4mXA3; visid_incap_2157814=MLx0TCT1QzWCLDjf/k8xouG5pV0AAAAAQUIPAAAAAAAtwxtbrszOS9cnPkfMJImh; nlbi_2157814=rXHOBbEfZzjCVU7PFCjX8AAAAAD6AVcgaHFhYbyBrKgAnHLe; visid_incap_1695012=j/GQeIB0QvSrpr8FV6AY+Mk6pl0AAAAAQUIPAAAAAADfkKWsuC9sMxlnixTZ0N75; visid_incap_2008308=jL0ZI69CSdGblQQFvOBNDs86pl0AAAAAQUIPAAAAAADiUu4LlaMw4oHqOHFuggtJ; nlbi_2008308=iqq8R2I+dRJC9oxsWqAKnQAAAADVdeH3RojmZ7agwtEKxdOR; visid_incap_1695010=TuQ0pRSDTtGimtprCzTTuQ4+pl0AAAAAQUIPAAAAAABO2aYWklqde+9dElyEC0/S; visid_incap_907285=hxhLGB9LSeSGW3FiN49f2x0+pl0AAAAAQUIPAAAAAACqBAOaekXlle0q5TKTf+2q; visid_incap_1580053=GazPRpCARfC6vXTYbS8n3O9Dpl0AAAAAQUIPAAAAAACAjwoj/mNm3BaxePIWGbcq; visid_incap_1695007=aMuWnZIkQt6PvR+q9RwfTkKcp10AAAAAQUIPAAAAAACyiE6h3ZIdBKin8TmF2Kj4; ga_sync_ran=1; check=true; visid_incap_1982572=VkAJrtsMQdKbkhGpynJfPJww7F0AAAAAQUIPAAAAAAALkfLYiCgd1vjMhazS1NzU; nlbi_1982572=valwQYeQEAvaynr65+1KCQAAAAAhbQmH2Z94dh9+ImKY7Ux1; nlbi_1656993=MNEKSTfzOzH7OtmpQVPvnAAAAADYVNlB/K1Dv6R6aCLFOnJ+; visid_incap_1656993=g/ykA6WuQ16FbWsVsi8lwiciBV4AAAAAQUIPAAAAAABGM5hXQHX7rUZPrPKro5IK; nlbi_1656989=yTzCPMcwxEM2Yt16oiToUwAAAABUmpJrWpRKGSJ2dXqNtN4w; visid_incap_1656989=uqX20zviQWq8kd2eAEG753wRM14AAAAAQUIPAAAAAACq6UaK0vOhsa0XucwFbsXU; applicationid=INSIGHT_AEM_PUBLISH; nlbi_1695007=UdvxcbGieQkIl3NSoGLYkwAAAACYhSx8nRnnxUxTsTo7y0wl; _bcvm_vid_4205198233992355619=2331080345580109812T12C62850FCC9ABE0313235C17EB6D17F2D70202911F0BCD5B40E4A68AA1BEBF227A7EFCA70CC1AE9313406BE3DE9B1C8C71FF72190298FC7DE410D2DF21D767C; nlbi_1217051=dRESVrA3gznCX6UV7tHlpwAAAAACdBYP/TiqACbbm/majNzc; nlbi_907285=bVcaV/bZLnxHQeQ7FwRgpwAAAADkUye3KnAP2X64W0H65wWc; nlbi_1580053=v6UfOj+hfVy+hFhCojc0lgAAAAC1dsdb4Y6ep/tcmuasJJHD; channel_name=direct; channel_category=direct; _bcvm_vrid_1127738362202018805=2331069334991143640TB0A8F7865540868F1909AAEAC24005104137F9F076976A52AC9A2022AD591B9384ED2F46B17C86F8ABBB01BAFF12163748343E9A3A273D91B54B5858997A128F; SSOSOURCEID=https://aem-qa-publish.motorolasolutions.com/en_us/registration?app=OCC&short=true&path=/; OCCSESSION=Y; BIGipServerccstore-uat-zd8a_oracleoutsourcing_com_http=3090191489.40467.0000; dtCookie=-15$KSGIU1OD3J8GV4SFD14BH9AA8U3D48IL; rxVisitor=15837934074385B27PEPK18JS6R21QKP0JPI14JK92V8H; _bcvm_vrid_1127738362202018805=2331069334991143640TB0A8F7865540868F1909AAEAC24005104137F9F076976A52AC9A2022AD591B9384ED2F46B17C86F8ABBB01BAFF12163748343E9A3A273D91B54B5858997A128F; incap_ses_684_1695012=q9nuGWkKfyFoheg2tA9+CcJLaF4AAAAAmX2YZWVyUJVCWwjOF5L1dg==; incap_ses_684_2008308=TTvrM0GCRQK9jOg2tA9+Cc5LaF4AAAAArIeAv4NzUEOXIOAvNONjBw==; incap_ses_1241_1695012=IXa3DnDZCSdDc4ndXus4EZabaV4AAAAA1+QKfNOCiC9mj79j+yPZTw==; visid_incap_1293485=cNGDDNr2ROO4abhkucWPOeCpaV4AAAAAQUIPAAAAAAAP/yrlYw7r491wY6KXuHbr; nlbi_1293485=OCMOdghei11Tog8VDeFgxAAAAACBo2wyxRWxw+YvMIg6YdyN; incap_ses_684_1293485=O9BUfoHe1mbHbBKGtg9+CeGpaV4AAAAAznQam4NxRz0dpib6cyyu6Q==; incap_ses_1239_1695012=v+fFGsjkvmePeaHsXNAxEXV4al4AAAAA/gNN8gRSWu7fp1nz+s3iwA==; incap_ses_1239_2008308=usZlRU5YvjkHn6HsXNAxEZZ4al4AAAAAH52EXutXDoKlY6R3Fd8org==; incap_ses_169_1695012=x+R6bqe4vH8c1eEbcWpYAvnZal4AAAAAxxMmTI5wVhuiOwqipLmAcA==; incap_ses_169_2008308=+Ge2ZbA+GE7iZ+0bcWpYAvjkal4AAAAAOZWWEhdXs/3vQqVK5PaxGw==; incap_ses_486_1695016=RGn4PGfbhB8iDBzAOZ++Bq+ma14AAAAAP+pl1NsDM+IXezidbAAaKg==; incap_ses_486_1695010=S3FwNIcee2ds/pvAOZ++Bsbca14AAAAA+6Xv5ei8PfYz/1DW9Dpwmg==; incap_ses_486_1695012=H5vhWG/YN0WxJqrAOZ++Bkbja14AAAAAb1mMId/gaRmsOoXM+TPiCg==; incap_ses_486_2008308=3QsqGO7bKlrVWL7AOZ++BhHsa14AAAAA1RH0ffAsuBVM+2VR47tEmg==; incap_ses_788_1695012=sWGQVWQKvA+BaJGMBovvCtCfbV4AAAAAUmMkvTmSyn7Ttu1GrFuiqA==; incap_ses_788_2008308=2ejXLx4KeGlBg5WMBovvCqmqbV4AAAAAL1mlkHZmeiXDAO1Zkul1JA==; incap_ses_789_2008308=djr1FoSG0CwK7aWFhxjzCjo0bl4AAAAAwyYctjn5Sq0HG9SAggnafA==; incap_ses_789_1695012=owvICOYeymHhAQmGhxjzCo7Vbl4AAAAAnjlwIJnRjnGYBAsWnTxJ3w==; incap_ses_143_1695010=v7qRNiOz7xNPc4cDzAn8AVCIb14AAAAAmzRs+z8g1oYaeQYsQTs/3w==; nlbi_1695010=cU7xfA/n9jzy6O4/RghAAgAAAAASHwXs2RMeZ96EwcZHDrks; incap_ses_298_2008308=CubYD9XHoyx4ETtzGrYiBBrCb14AAAAAU887OosvgsFD6Um7iKiX+A==; incap_ses_298_1695012=MzmdJ+x6QACz8XZzGrYiBJn7b14AAAAAPeNp4e3/ocDnf6UKjbx9eA==; incap_ses_143_1695016=81/IQvg0Rw2dfAgGzAn8AQTdcF4AAAAAcZ8RI+yUUFf7PNOdDCiMZg==; _bcvm_vid_1127738362202018805=2331114693311929287T9FEA4C813AB7598CAA6DA59AFC44AEF7B95528B0E73006C27DAD22775887749E9D46D5F4A9D4E0E7E619F17BE1636F62FC81C9BEC53A53B79B326D6427586319; incap_ses_143_2008308=rjbpQHAnujosGA8GzAn8AVzgcF4AAAAARuPlr/Ul7J6br+iFWI902A==; chosen_customer_number=DUMMY_ACCOUNT; chosen_contract=NO_CONTRACT; occ-shopping-cart=5; oe-recently-viewed-products=HNN9012AR*NTN9862D*HNN9008AR*0180351A44*WPLN4214B*; nlbi_1695016=ybq4MCHtPj1mwo5qWS5FmQAAAAAdPWu97Yc/5vkqpTsHCkXs; OPTOUTMULTI=0:0%7Cc1:0%7Cc3:0%7Cc2:0%7Cc5:0%7Cc6:0; incap_ses_222_1377994=PSSiR5idZ1xTLNEXRbUUA5bvcF4AAAAAZjBukNaPoQROxCFgTPXHow==; incap_ses_684_1377994=uA/oFYc68mpK2ciKtg9+CZXvcF4AAAAAeoB8x5WKzP7jpLcvkwuM4w==; incap_ses_169_1377994=30iTXjtpLg1km7Vsc2pYApzvcF4AAAAAQC89nO281O8KqUtHkx7hXA==; incap_ses_1241_1377994=ha3DRlyqtyeHUADjXus4EZzvcF4AAAAA0/eH9UYVxXrvzUdVqFCKXA==; incap_ses_987_1377994=7C0TQDiEJiEiBsG7R4iyDZzvcF4AAAAAe6NvQVGPVBWrsvVHLGHC3A==; incap_ses_1171_1377994=FP8uLJLWYVPbSmXB2TpAEKbvcF4AAAAAzVr05GTArGs9R0LWmIIy3Q==; incap_ses_490_1377994=NLZoQy+VBQ26sRfNE9bMBqfvcF4AAAAAtZOacZtsS7Nu6pRAjdI2+w==; visid_incap_1377994=38wBg9ACTdWB6EIgOTJBn6fvcF4AAAAAQUIPAAAAAADu04q6YTK52cZxnRCEcJvO; nlbi_1377994=huU6fKTzMwKbWmhAl/YTVgAAAACWhzzOMsQVXJi7Nj0VQu1p; incap_ses_1169_1377994=FiOAUh9udXBv1rNz4x85EKfvcF4AAAAAJaHsWFMgb6JkLpLa1rc/JA==; oauth_token_secret-storefront-msi=eyJhbGciOiJSUzI1NiIsImprdSI6InN6ZDhhMGMwIiwia2lkIjpudWxsLCJ4NWMiOm51bGwsIng1dSI6Imh0dHBzOi8vc2hvcC1zdGFnZS5tb3Rvcm9sYXNvbHV0aW9ucy5jb20vY2NzdG9yZS92MS90ZW5hbnRDZXJ0Q2hhaW4ifQ==.eyJpYXQiOjE1ODQ0NTk5MDcsImV4cCI6MTU4NDQ2MTczNywic3ViIjoiMTM5MTExMzUiLCJhdWQiOiJzdG9yZWZyb250VUkiLCJjb20ub3JhY2xlLmF0Zy5jbG91ZC5jb21tZXJjZS5yb2xlcyI6bnVsbCwib2Njcy5hZG1pbi5yb2xlcyI6bnVsbCwiaXNzIjoiaHR0cHM6Ly9zaG9wLXN0YWdlLm1vdG9yb2xhc29sdXRpb25zLmNvbS8iLCJvY2NzLmFkbWluLmxvY2FsZSI6bnVsbCwib2Njcy5hZG1pbi50eiI6bnVsbCwib2Njcy5hZG1pbi50ZW5hbnRUeiI6IkFtZXJpY2EvQ2hpY2FnbyIsIm9jY3MuYWRtaW4ua2VlcEFsaXZlVVJMIjoiaHR0cHM6Ly9zaG9wLXN0YWdlLm1vdG9yb2xhc29sdXRpb25zLmNvbS8iLCJvY2NzLmFkbWluLnRva2VuUmVmcmVzaFVSTCI6Imh0dHBzOi8vc2hvcC1zdGFnZS5tb3Rvcm9sYXNvbHV0aW9ucy5jb20vY2NzdG9yZS92MS9zc29Ub2tlbnMvcmVmcmVzaCIsIm9jY3MuYWRtaW4udmVyc2lvbiI6IjIwLjEuMiIsIm9jY3MuYWRtaW4uYnVpbGQiOiJqZW5raW5zLUFzc2VtYmxlX0Nsb3VkX0NvbW1lcmNlX0VBUnNfLW1hc3Rlci0xMzEiLCJvY2NzLmFkbWluLmVtYWlsIjpudWxsLCJvY2NzLmFkbWluLnByb2ZpbGVJZCI6IjEzOTExMTM1Iiwib2Njcy5hZ2VudC5vYm8iOm51bGwsIm9jY3MuYWRtaW4uZmlyc3ROYW1lIjpudWxsLCJvY2NzLmFkbWluLmxhc3ROYW1lIjpudWxsLCJvY2NzLmFkbWluLnB1bmNob3V0VXNlciI6ZmFsc2UsInN1Yl90eXBlIjpudWxsLCJzY29wZSI6bnVsbH0=.Q+j3TaK+j7+RyUwGjM+xipbNRTv0kq6EyJbs2uvGJ8q9Q0nr7jG5YiLMbceTKrjtoJxKkrGXRA/RiybE6SqWyn9vNnfgwkixgswRNuMXmDMLbh4CJttcaIHiG6kfY18YPWxqOjjfLjixSsOZBigGARET9jWyARr57y9WC5gB0BHbOiH6IEXOf5Lw8ZuAFggmj4S6MbkpIeHrrfIPImM4CadpDv6C3hl6wiTCnTVyzCoJTRaRjyfzqMhgopem93NiqqH/V0T20xy2dKwCVhGFstZ4ujicvpHZGMY4mbMZ9RzqQINEYFqLOO1CaFrrm+kNPHb6EpuglmWerOSsTfuihQ==; JSESSIONID=dMHp76y6Y5C2RFWi15L3_6yJTIB508Ikhq1Kde8pVTGsiJMNGuaV!-1647225658; incap_ses_143_1695012=V1XOGAzHLGf00OIGzAn8AbsicV4AAAAA6ABY3wr+EQwMH1W6rAOBDw==; incap_ses_887_1695012=VXcDOa6Wkktu992n5kJPDOQjcV4AAAAAAZu0DR4uUmzRt3PXxJ039g==; rxvt=1584475157058|1584472767683; dtPC=-15$472767651_918h1p-15$472786458_977h1p-15$472905825_654h1p-15$472991206_640h1p-15$473066725_59h1p-15$473290005_510h1p-15$473357040_770h1vSYXVTGVLFVOIGFYWIFDIXPOPPFCJMMVT; nlbi_1695012=T41Xfg/MACsoSXeHw9T44wAAAAClPqz6G3546yY4xaTnZEy+; utag_main=v_id:01709b6bc5200021d9655b067f2802079004e07100e50$_sn:35$_ss:0$_st:1584475166092$dc_visit:35$vapi_domain:motorolasolutions.com$ses_id:1584472768631%3Bexp-session$_pn:7%3Bexp-session$dc_event:19%3Bexp-session; _bcvm_vid_1127738362202018805=2331114693311929287T9FEA4C813AB7598CAA6DA59AFC44AEF7B95528B0E73006C27DAD22775887749E9D46D5F4A9D4E0E7E619F17BE1636F62FC81C9BEC53A53B79B326D6427586319; bc_pv_end=2331114877975884857TFB35E9B819470D35CCE6BA04E7D007F0A50C6C9BB40A60389E06F4270D7469925EC522D12A2AD5D9BF495D9ED0902375B0129D65BCC416DEBEFC2A8F5CA761C3'
+      // };
+
+      // request('https://shop-test2.motorolasolutions.com/file/general/84aca29a-4c10-46bd-b81b-18b6ae4ee243.woff2', { rejectUnauthorized: false, headers }, (error, response, body) => {
+      //   console.log(error);
+      // });
+
+      // return;
+
       const customApiDir = config.dir.instanceDefinitions.customApi;
       const oracleApiDir = config.dir.instanceDefinitions.oracleApi;
       const schemaPath = path.join(oracleApiDir, 'schema.json');

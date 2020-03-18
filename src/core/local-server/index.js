@@ -60,7 +60,7 @@ class LocalServer {
           return reject(error);
         }
 
-        resolve('Grab Pages Response Completed!');
+        resolve('Server Closed!');
       });
     });
   }

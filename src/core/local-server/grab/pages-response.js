@@ -101,7 +101,7 @@ class PagesResponse {
 
         const responseDescriptor = {
           "request": {
-            "queryParameters": {},
+            "parameters": {},
             "method": "get",
             "headers": {},
             "body": {}
@@ -136,7 +136,7 @@ class PagesResponse {
 
             winston.info(`${linkObject.name} - ${pageDataType}`);
             const dataTypePath = path.join(currentPath, pageDataType);
-            const dataTypeQueryParameters = url.parse(dataTypeEndpoint, true).query;
+            const dataTypeParameters = url.parse(dataTypeEndpoint, true).query;
             await fs.ensureDir(dataTypePath);
 
             winston.info(`Getting data from ${dataTypeEndpoint}...`);
@@ -147,12 +147,12 @@ class PagesResponse {
 
             // Don't keep information about resolution on layouts, it will force us to generate one layout for each resolution
             // we should mock this when necessary
-            if(pageDataType === 'layout' && dataTypeQueryParameters['ccvp']) {
-              delete dataTypeQueryParameters['ccvp'];
+            if(pageDataType === 'layout' && dataTypeParameters['ccvp']) {
+              delete dataTypeParameters['ccvp'];
             }
 
-            responseDescriptor.request.queryParameters = dataTypeQueryParameters;
-            responseDescriptor.request.queryParameters[':path'] = normalizedRoute;
+            responseDescriptor.request.parameters = dataTypeParameters;
+            responseDescriptor.request.parameters[':path'] = normalizedRoute;
             const descriptorPath = `${dataTypePath}/descriptor.json`;
             const dataPath = `${dataTypePath}/data.json`;
 

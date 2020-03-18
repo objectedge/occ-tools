@@ -129,6 +129,12 @@ class ApiSchema {
               const dataDescriptorPath = path.join(responsePath, 'descriptor.json');
               const dataPath = path.join(responsePath, 'data.json');
 
+              if(requestData.parameters) {
+                requestData.parameters.forEach(parameter => {
+                  parameter.name = parameter.name.replace(': .*', '');
+                });
+              }
+
               const descriptor = {
                 allowedParameters: requestData.parameters,
                 request: {
@@ -141,7 +147,8 @@ class ApiSchema {
                   dataPath: path.relative(responsePath, dataPath),
                   statusCode,
                   headers: {}
-                }
+                },
+                id: 'default'
               };
 
               await fs.ensureDir(responsePath);
@@ -191,6 +198,17 @@ class ApiSchema {
           await fs.outputJSON(definitionPath, schemaJSON.definitions[schemaDefinitionPath], { spaces: 2 });
         }
         delete schemaJSON.definitions;
+
+        // Making paths compatible with Express
+        for(let requestPathKey of Object.keys(schemaPaths)) {
+          const value = schemaPaths[requestPathKey];
+          delete schemaPaths[requestPathKey];
+
+          requestPathKey = requestPathKey.replace(/\{\}/g, '*');
+          requestPathKey = requestPathKey.replace(/\{(.+?):\s?\.\*\}/g, ':$1(*)');
+          requestPathKey = requestPathKey.replace(/\{(.*)\}/g, ':$1');
+          schemaPaths[requestPathKey] = value;
+        }
 
         await fs.outputJSON(schemaPath, schemaJSON, { spaces: 2 });
         winston.info('Schema Updated!');

@@ -17,7 +17,6 @@ const devcert = require('devcert');
 const Transpiler = require('./transpiler');
 const HostsManager = require('./hosts-manager');
 const uniqid = require('uniqid');
-const { shallowEqualObjects } = require("shallow-equal");
 const endpointsMapping = [];
 
 class LocalServer {
@@ -204,7 +203,15 @@ class LocalServer {
           const descriptionRequest = descriptor.request;
           const descriptionResponse = descriptor.response;
           const isCSSResponse = /\/pages\/css/.test(req.originalUrl);
-          const responseContent = isCSSResponse ? rawBody : JSON.parse(rawBody);
+          let responseContent = rawBody;
+
+          try {
+            responseContent = JSON.parse(rawBody);
+          } catch(error) {
+            if(!isCSSResponse) {
+              return returnError(rawBody);
+            }
+          }
 
           descriptor.id = requestId;
 
@@ -383,6 +390,40 @@ class LocalServer {
     }
   }
 
+  checkEquality(object1, object2) {
+    const optionsPropertyKey = '__options';
+    const options = object1[optionsPropertyKey] || {};
+    const matchType = options.matchType || 'string';
+    const match = (object1Value, object2Value) => {
+      if(matchType === 'string') {
+        return object1Value.toString() === object2Value.toString();
+      }
+
+      return new RegExp(object1Value.toString()).test(object2Value.toString());
+    };
+
+    if(typeof object1 === 'string') {
+      return match(object1, object2);
+    }
+
+    const iterableObjectKeys = Object.keys(object2).filter(item => item !== optionsPropertyKey);
+
+    return iterableObjectKeys.every(objectKey => {
+      const object1Value = object1[objectKey];
+      const object2Value = object2[objectKey];
+
+      if(typeof object2Value === 'undefined' || typeof object1Value === 'undefined') {
+        return false;
+      }
+
+      if(typeof object1Value === 'object' && typeof object2Value === 'object') {
+        return checkEquality(object1Value, object2Value);
+      }
+
+      return match(object1Value, object2Value);
+    });
+  }
+
   setCCStoreRoutes(app) {
     const middleware = (endpointMappingPath, req, res, next) => {
       const endpointsMappingPerPath = endpointsMapping.filter(mapping => mapping.path === endpointMappingPath);
@@ -407,46 +448,75 @@ class LocalServer {
       for(const endpointMapping of endpointsMappingPerPath) {
         let points = 0;
         const requestDefinition = endpointMapping.requestDefinition;
-        const queryParameters = requestDefinition.queryParameters;
+        const requestDefintionQueryParameters = requestDefinition.queryParameters;
         const headers = requestDefinition.headers;
-        const hasQueryParameters = Object.keys(queryParameters).length;
+        const hasRequestDefinitionQueryParameters = Object.keys(requestDefintionQueryParameters).length;
         const hasHeaders = Object.keys(headers).length;
         const hasBody = Object.keys(requestDefinition.body).length; // Check with Object.keys even if it's an object
         const body = requestDefinition.body;
+        const inQueryParameters = {};
+        const inPathParameters = {};
+        const parameters = endpointMapping.requestData.parameters;
 
-        if(hasQueryParameters) {
-          const parameters = endpointMapping.requestData.parameters;
-          const inQueryParameters = {};
-          const inPathParameters = {};
+        if(hasRequestDefinitionQueryParameters) {
+          const queryParameters = parameters.filter(parameter => parameter.in === 'query').map(parameter => parameter.name);
+          const pathParameters = parameters.filter(parameter => parameter.in === 'path').map(parameter => parameter.name);
 
-          parameters.forEach(parameter => {
-            if(parameter.in === 'query' && queryParameters[parameter.name]) {
-              inQueryParameters[parameter.name] = queryParameters[parameter.name];
+          Object.keys(requestDefintionQueryParameters).forEach(parameter => {
+            if(!queryParameters.includes(parameter)) {
+              inPathParameters[parameter] = requestDefintionQueryParameters[parameter];
+            }
+
+            if(!pathParameters.includes(parameter)) {
+              inQueryParameters[parameter] = requestDefintionQueryParameters[parameter];
             }
           });
+        }
 
-          parameters.forEach(parameter => {
-            if(parameter.in === 'path' && queryParameters[parameter.name]) {
-              inPathParameters[parameter.name] = queryParameters[parameter.name];
-            }
-          });
+        if(!hasHeaders && !hasBody && !hasRequestDefinitionQueryParameters) {
+          points++;
+        }
 
-          if(shallowEqualObjects(inQueryParameters, reqQuery) && shallowEqualObjects(inPathParameters, reqParams)) {
+        if(endpointMapping.id === 'default') {
+          points--;
+        }
+
+        if(Object.keys(inPathParameters).length) {
+          if(this.checkEquality(inPathParameters, reqParams)) {
             points++;
           } else {
-            points = points - 2;
+            points = 0;
+
+            mappingPriorizationList.push({
+              endpointMapping,
+              points
+            });
+
+            continue;
+          }
+        }
+
+        if(Object.keys(inQueryParameters).length) {
+          if(this.checkEquality(inQueryParameters, reqQuery)) {
+            points++;
+          } else {
+            points--;
           }
         }
 
         if(hasHeaders) {
-          if(shallowEqualObjects(headers, req.headers)) {
+          if(this.checkEquality(headers, req.headers)) {
             points++;
+          } else {
+            points--;
           }
         }
 
         if(hasBody) {
-          if(shallowEqualObjects(body, req.body)) {
+          if(this.checkEquality(body, req.body)) {
             points++;
+          } else {
+            points--;
           }
         }
 
@@ -456,7 +526,13 @@ class LocalServer {
         });
       }
 
-      const priorizedMapping = mappingPriorizationList.sort((a, b) => b.points - a.points)[0];
+      const defaultMapping = mappingPriorizationList.find(mapping => mapping.endpointMapping.id === 'default');
+      let priorizedMapping = mappingPriorizationList.sort((a, b) => b.points - a.points)[0];
+
+      if(priorizedMapping.points <= 0) {
+        priorizedMapping = defaultMapping;
+      }
+
       req.__endpointMapping = priorizedMapping.endpointMapping;
       next();
     };

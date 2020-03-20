@@ -146,11 +146,14 @@ class ApiSchema {
               const descriptor = {
                 allowedParameters: requestData.parameters,
                 request: {
-                  queryParameters: {},
-                  pathParameters: {},
+                  parameters: {
+                    path: {},
+                    query: {}
+                  },
                   method,
                   headers: {},
-                  body: {}
+                  body: {},
+                  statusCode: "200"
                 },
                 response: {
                   dataPath: path.relative(responsePath, dataPath),

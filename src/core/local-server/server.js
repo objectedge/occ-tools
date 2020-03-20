@@ -14,14 +14,27 @@ const exitHook = require("async-exit-hook");
 const jsesc = require('jsesc');
 const config = require('../config');
 const devcert = require('devcert');
+const grabApiSchema = require('./grab/api-schema');
+const grabLibraries = require('./grab/libraries');
 const Transpiler = require('./transpiler');
 const HostsManager = require('./hosts-manager');
 const uniqid = require('uniqid');
 const endpointsMapping = [];
+const deepEqual = require('fast-deep-equal');
+const multiparty = require('multiparty');
+
+function isEmptyObject(obj){
+  return Object.keys(obj).length === 0;
+}
+
+function isObject(obj) {
+  return Object.prototype.toString.call(obj) == "[object Object]";
+}
 
 class LocalServer {
   constructor(options, instance) {
     this.options = options;
+    this.commandInstance = instance;
     this.instanceOptions = instance.options;
     this.domain = config.endpoints.dns;
     this.localDomain = config.endpoints.local;
@@ -145,6 +158,19 @@ class LocalServer {
       const foundFile = glob.sync(path.join(config.dir.project_root, 'widgets', '**', widgetName, 'templates', fileName));
 
       if(foundFile.length) {
+        let type = mime.getType(foundFile);
+
+        if(/\.template/.test(foundFile)) {
+          type = 'text/html';
+        }
+
+        // Try to set the content-type, if it's not possible, then use the request one
+        if(type) {
+          res.type(type);
+        } else if(req.get('Content-Type')) {
+          res.type(req.get('Content-Type'));
+        }
+
         return res.send(await fs.readFile(foundFile[0]));
       }
 
@@ -159,23 +185,71 @@ class LocalServer {
   syncStoreRequest(req, endpointMapping) {
     const responseDataPath = endpointMapping.responseDataPath;
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       if(req.__syncRemote) {
         delete req.__syncRemote;
       }
 
-      const requestOptions = {
-        rejectUnauthorized: false,
-        gzip: true
-      };
-
       const remoteUrl = `${this.domain}/${req.originalUrl}`;
-
       const headers = JSON.stringify(req.headers);
       req.headers = JSON.parse(headers.replace(new RegExp(this.localHostname, 'g'), this.hostname));
 
-      req.pipe(request(remoteUrl, requestOptions, async (error, response, body) => {
+      const requestOptions = {
+        uri: remoteUrl,
+        rejectUnauthorized: false,
+        gzip: true,
+        method: req.method,
+        headers: req.headers
+      };
+
+      const isForm = req.is('urlencoded') || req.is('multipart');
+
+      if(!isForm && ((isObject(req.body) && !isEmptyObject(req.body)) || (!isObject(req.body) && req.body))) {
+        requestOptions.body = req.is('application/json') ? JSON.stringify(req.body) : req.body;
+      }
+
+      if(req.is('urlencoded')) {
+        requestOptions.form = req.body;
+      }
+
+      if(req.is('multipart')) {
+        const form = new multiparty.Form();
+
+        try {
+          await new Promise((resolve, reject) => {
+            form.parse(req, (error, fields, files) => {
+              if(error) {
+                return reject(error);
+              }
+
+              requestOptions.formData = {};
+
+              if(fields && !isEmptyObject(fields)) {
+                Object.keys(fields).forEach(fieldKey => {
+                  requestOptions.formData[fieldKey] = Buffer.from(fields[fieldKey]);
+                });
+              }
+
+              if(files && !isEmptyObject(files)) {
+                Object.keys(files).forEach(fileKey => {
+                  requestOptions.formData[fileKey] = files.map(file => fs.createReadStream(file.path));
+                });
+              }
+
+              resolve();
+            });
+          });
+        } catch(error) {
+          return reject({ data: error, response: {} });
+        }
+      }
+
+      request(requestOptions, async (error, response, body) => {
         const returnError = error => reject({ data: error, response });
+
+        if(!body) {
+          body = '{ "success": true }';
+        }
 
         if(error) {
           return returnError(error);
@@ -214,16 +288,22 @@ class LocalServer {
           }
 
           descriptor.id = requestId;
+          descriptionRequest.statusCode = response.statusCode.toString();
 
-          if(descriptionRequest.queryParameters) {
-            const attachProperties = properties => {
+          if(descriptionRequest.parameters) {
+            const attachProperties = (properties, type) => {
               Object.keys(properties).filter(property => !/[\d]+/.test(property)).forEach(property => {
-                descriptionRequest.queryParameters[property] = properties[property];
+                descriptionRequest.parameters[type][property] = properties[property];
               });
             };
 
-            attachProperties(req.params);
-            attachProperties(req.query);
+            if(isObject(descriptionRequest.parameters.path)) {
+              attachProperties(req.params, 'path');
+            }
+
+            if(isObject(descriptionRequest.parameters.query)) {
+              attachProperties(req.query, 'query');
+            }
           }
 
           descriptionRequest.method = req.method.toLowerCase();
@@ -263,7 +343,7 @@ class LocalServer {
         } catch(error) {
           return returnError(error);
         }
-      }));
+      });
     });
   }
 
@@ -390,43 +470,10 @@ class LocalServer {
     }
   }
 
-  checkEquality(object1, object2) {
-    const optionsPropertyKey = '__options';
-    const options = object1[optionsPropertyKey] || {};
-    const matchType = options.matchType || 'string';
-    const match = (object1Value, object2Value) => {
-      if(matchType === 'string') {
-        return object1Value.toString() === object2Value.toString();
-      }
-
-      return new RegExp(object1Value.toString()).test(object2Value.toString());
-    };
-
-    if(typeof object1 === 'string') {
-      return match(object1, object2);
-    }
-
-    const iterableObjectKeys = Object.keys(object2).filter(item => item !== optionsPropertyKey);
-
-    return iterableObjectKeys.every(objectKey => {
-      const object1Value = object1[objectKey];
-      const object2Value = object2[objectKey];
-
-      if(typeof object2Value === 'undefined' || typeof object1Value === 'undefined') {
-        return false;
-      }
-
-      if(typeof object1Value === 'object' && typeof object2Value === 'object') {
-        return checkEquality(object1Value, object2Value);
-      }
-
-      return match(object1Value, object2Value);
-    });
-  }
-
   setCCStoreRoutes(app) {
     const middleware = (endpointMappingPath, req, res, next) => {
-      const endpointsMappingPerPath = endpointsMapping.filter(mapping => mapping.path === endpointMappingPath);
+      const methodMatches = mapping => ['*', 'use'].includes(mapping.method) ? true : req.method.toLowerCase() === mapping.method.toLowerCase();
+      const endpointsMappingPerPath = endpointsMapping.filter(mapping => mapping.path === endpointMappingPath && methodMatches(mapping));
       const mappingPriorizationList = [];
       const reqQuery = req.query || {};
       let reqParams = {};
@@ -447,42 +494,23 @@ class LocalServer {
 
       for(const endpointMapping of endpointsMappingPerPath) {
         let points = 0;
+
         const requestDefinition = endpointMapping.requestDefinition;
-        const requestDefintionQueryParameters = requestDefinition.queryParameters;
-        const headers = requestDefinition.headers;
-        const hasRequestDefinitionQueryParameters = Object.keys(requestDefintionQueryParameters).length;
-        const hasHeaders = Object.keys(headers).length;
-        const hasBody = Object.keys(requestDefinition.body).length; // Check with Object.keys even if it's an object
-        const body = requestDefinition.body;
-        const inQueryParameters = {};
-        const inPathParameters = {};
-        const parameters = endpointMapping.requestData.parameters;
-
-        if(hasRequestDefinitionQueryParameters) {
-          const queryParameters = parameters.filter(parameter => parameter.in === 'query').map(parameter => parameter.name);
-          const pathParameters = parameters.filter(parameter => parameter.in === 'path').map(parameter => parameter.name);
-
-          Object.keys(requestDefintionQueryParameters).forEach(parameter => {
-            if(!queryParameters.includes(parameter)) {
-              inPathParameters[parameter] = requestDefintionQueryParameters[parameter];
-            }
-
-            if(!pathParameters.includes(parameter)) {
-              inQueryParameters[parameter] = requestDefintionQueryParameters[parameter];
-            }
-          });
-        }
-
-        if(!hasHeaders && !hasBody && !hasRequestDefinitionQueryParameters) {
-          points++;
-        }
+        const requestDefinitionParameters = requestDefinition.parameters;
 
         if(endpointMapping.id === 'default') {
           points--;
         }
 
-        if(Object.keys(inPathParameters).length) {
-          if(this.checkEquality(inPathParameters, reqParams)) {
+        // It's matching at least a simple route, without headers, body, path param or query string
+        // so, adding one point to this mapping
+        if(isEmptyObject(requestDefinition.headers) && isEmptyObject(requestDefinition.body)
+        && isEmptyObject(requestDefinitionParameters.path) && isEmptyObject(requestDefinitionParameters.query)) {
+          points++;
+        }
+
+        if(!isEmptyObject(requestDefinitionParameters.path)) {
+          if(deepEqual(requestDefinitionParameters.path, reqParams)) {
             points++;
           } else {
             points = 0;
@@ -492,28 +520,29 @@ class LocalServer {
               points
             });
 
+            // Stop, if the path is not matching, we don't need to continue on searching
             continue;
           }
         }
 
-        if(Object.keys(inQueryParameters).length) {
-          if(this.checkEquality(inQueryParameters, reqQuery)) {
+        if(!isEmptyObject(requestDefinitionParameters.query)) {
+          if(deepEqual(requestDefinitionParameters.query, reqQuery)) {
             points++;
           } else {
             points--;
           }
         }
 
-        if(hasHeaders) {
-          if(this.checkEquality(headers, req.headers)) {
+        if(!isEmptyObject(requestDefinition.headers)) {
+          if(deepEqual(requestDefinition.headers, req.headers)) {
             points++;
           } else {
             points--;
           }
         }
 
-        if(hasBody) {
-          if(this.checkEquality(body, req.body)) {
+        if(!isEmptyObject(requestDefinition.body)) {
+          if(deepEqual(requestDefinition.body, req.body)) {
             points++;
           } else {
             points--;
@@ -524,6 +553,10 @@ class LocalServer {
           endpointMapping,
           points
         });
+      }
+
+      if(!mappingPriorizationList.length) {
+        return next('route');
       }
 
       const defaultMapping = mappingPriorizationList.find(mapping => mapping.endpointMapping.id === 'default');
@@ -537,9 +570,14 @@ class LocalServer {
       next();
     };
 
-    for(const endpointMapping of endpointsMapping) {
-      const requestEndpoint = endpointMapping.path;
-      const requestDefinition = endpointMapping.requestDefinition;
+    for(const currentEndpointMapping of endpointsMapping) {
+      const requestEndpoint = currentEndpointMapping.path;
+      const requestDefinition = currentEndpointMapping.requestDefinition;
+
+      // if it's *, then it can match any method
+      if(requestDefinition.method === '*') {
+        requestDefinition.method = 'use';
+      }
 
       app[requestDefinition.method](requestEndpoint, middleware.bind(this, requestEndpoint), async (req, res) => {
         const endpointMapping = req.__endpointMapping;
@@ -567,7 +605,16 @@ class LocalServer {
           res.type('css');
         }
 
-        let content = await fs.readFile(endpointMapping.responseDataPath, 'utf8');
+        let content = '';
+
+        try {
+          content = await fs.readFile(endpointMapping.responseDataPath, 'utf8');
+        } catch(error) {
+          winston.error(`The following request was not synced :${req.originalUrl}`);
+          winston.error("Reason: ", error);
+          res.status(500);
+          return res.send({ error });
+        }
 
         // Sync local with remote
         if(req.__syncRemote || this.syncAllApiRequests || endpointMapping.id === 'default') {
@@ -576,7 +623,7 @@ class LocalServer {
           } catch(error) {
             winston.error(`The following request was not synced :${req.originalUrl}`);
             winston.error("Reason: ", error.data);
-            res.status(error.response.statusCode);
+            res.status(500);
             return res.send(error.data);
           }
         }
@@ -599,6 +646,7 @@ class LocalServer {
   setRoutes(app) {
     app.use(bodyParser.json());
     app.use(bodyParser.text());
+    app.use(express.urlencoded({ extended: true }))
 
     // Disabling ETag because OCC tries to parse it and we don't have a valid value for this
     app.set('etag', false);
@@ -706,6 +754,30 @@ class LocalServer {
     this.setCCStoreRoutes(app);
   }
 
+  loadApiSchema() {
+    return new Promise((resolve, reject) => {
+      grabApiSchema('grab', this.commandInstance, error => {
+        if(error) {
+          return reject(error);
+        }
+
+        resolve();
+      });
+    });
+  }
+
+  loadOCCLibraries() {
+    return new Promise((resolve, reject) => {
+      grabLibraries('grab-all', this.commandInstance, error => {
+        if(error) {
+          return reject(error);
+        }
+
+        resolve();
+      });
+    });
+  }
+
   run() {
     return new Promise(async (resolve, reject) => {
       const customApiDir = config.dir.instanceDefinitions.customApi;
@@ -715,11 +787,17 @@ class LocalServer {
       const customResponsesPath = path.join(customApiDir, 'responses');
       this.mocksPath = config.dir.mocks;
 
-      if (!fs.existsSync(schemaPath)) {
-        return reject(`The main schema.json ${schemaPath} doesn't exist... run grab-all to sync your environment`);
-      }
-
       try {
+        if (!fs.existsSync(config.dir.instanceDefinitions.oracleLibs)) {
+          winston.info("Oracle Libraries are not present locally. downloading them...");
+          await this.loadOCCLibraries();
+        }
+
+        if (!fs.existsSync(schemaPath)) {
+          winston.info("Environment API Schema is not present locally, downloading it...")
+          await this.loadApiSchema();
+        }
+
         await this.setLocalFiles();
         await this.bundleFiles();
 
@@ -832,7 +910,8 @@ class LocalServer {
                 const responseDataPath = path.join(definitionPath, '..', descriptor.response.dataPath);
                 const requestDefinition = descriptor.request;
                 const responseDefinition = descriptor.response;
-                let requestEndpoint = `${schema.basePath}${requestPath}`;
+                const basePath = !/\/ccstore/.test(requestPath) ? schema.basePath : '';
+                let requestEndpoint = `${basePath}${requestPath}`;
 
                 endpointsMapping.push({
                   id: descriptor.id,
@@ -861,19 +940,30 @@ class LocalServer {
         winston.info(`Running api server on port ${port}`);
       });
 
-      exitHook(callback => {
-        winston.info('Closing http server.');
-        server.close(async () => {
-          try {
-            await this.unsetHosts(true);
-          } catch(error) {
-            winston.error(error);
-          }
+      exitHook(async callback => {
+        try {
+          await this.closeServer(server);
+        } catch(error) {
+          winston.error(error);
+        }
 
-          winston.info('Done!');
-          callback();
-          resolve();
-        });
+        callback();
+      });
+    });
+  }
+
+  closeServer(server) {
+    return new Promise((resolve, reject) => {
+      winston.info('Closing server...');
+      server.close(async () => {
+        try {
+          await this.unsetHosts(true);
+        } catch(error) {
+          return reject(error);
+        }
+
+        winston.info("Server Closed!")
+        resolve();
       });
     });
   }

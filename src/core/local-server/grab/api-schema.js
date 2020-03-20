@@ -62,6 +62,14 @@ class ApiSchema {
 
         winston.info('Updating schema...');
 
+        // Defining Server Side Extension endpoint
+        endpointMap["serverSideExtension"] = {
+          "method": "*",
+          "responseType": "application/json",
+          "url": "/ccstorex/custom/v1/:path(*)",
+          "id": "serverSideExtension"
+        }
+
         if(!/ui/.test(schemaJSON.basePath)) {
           schemaJSON.basePath = schemaJSON.basePath.replace('ccadmin', 'ccadminui').replace('ccstore', 'ccstoreui');
         }
@@ -94,11 +102,11 @@ class ApiSchema {
               [method]: {
                 summary: endpointMapData.id,
                 operationId: endpointMapData.id,
-                produces: ['application/json'],
+                produces: [endpointMapData.responseType],
                 responses: {
                   "200": {
                     "examples": {
-                      "application/json": sampleResponse
+                      [endpointMapData.responseType]: sampleResponse
                     }
                   }
                 }
@@ -139,6 +147,7 @@ class ApiSchema {
                 allowedParameters: requestData.parameters,
                 request: {
                   queryParameters: {},
+                  pathParameters: {},
                   method,
                   headers: {},
                   body: {}
@@ -165,6 +174,15 @@ class ApiSchema {
               // If didn't find any valid mime type, consider it as application/json
               if(!foundValidMIMEType) {
                 contentTypeList = ['application/json'];
+
+                // If there is only one mime type and it's invalid, consider that as application/json
+                if(Object.keys(responses[statusCode].examples).length === 1) {
+                  responses[statusCode].examples = { [contentTypeList[0]]: Object.values(responses[statusCode].examples)[0] };
+
+                  if(requestData.produces) {
+                    requestData.produces = [contentTypeList[0]];
+                  }
+                }
               }
 
               let contentType = contentTypeList[0];

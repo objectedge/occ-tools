@@ -84,18 +84,32 @@ class LocalServer {
     const localWidgets = Object.keys(this.localFiles.widgets);
 
     if(Array.isArray(regions)) {
-      regions.forEach(region => {
+      regions.forEach(function iterateOverRegion(region) {
+        if(Array.isArray(region.regions)) {
+          return region.regions.forEach(iterateOverRegion.bind(this));
+        }
+
         if(!region.widgets) {
           return;
         }
 
         region.widgets.forEach(widget => {
+            let localPaths = [];
+
             for(const localWidget of localWidgets) {
-              widgets.push({ regionId: region.id, data: widget, localPaths: widget.typeId.includes(localWidget) ? this.localFiles.widgets[localWidget] : [] });
+              const widgetType = widget.typeId.replace(/_v.*$/, '');
+              widget.typeIdWithoutVersion = widgetType;
+
+              if(widgetType === localWidget) {
+                localPaths = this.localFiles.widgets[localWidget];
+                break;
+              }
             }
+
+            widgets.push({ regionId: region.id, data: widget, localPaths });
           }
         )
-      });
+      }.bind(this));
     }
 
     return widgets;
@@ -393,10 +407,18 @@ class LocalServer {
   }
 
   async transpiledJsResponse(type, req, res) {
-    const fileName = path.basename(req.params.file);
+    const fileParam = req.params.file.replace('.min', '');
+    let fileName = path.basename(fileParam);
 
     try {
-      const foundFile = await glob(path.join(config.dir.transpiled, type, '**', fileName));
+      let basePath = config.dir.transpiled;
+
+      if(/\/element\//.test(fileParam)) {
+        basePath = path.join(config.dir.project_root);
+        fileName = fileParam;
+      }
+
+      const foundFile = await glob(path.join(basePath, type, '**', fileName));
 
       if(foundFile.length) {
         res.type('js');

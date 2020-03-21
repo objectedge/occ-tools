@@ -191,15 +191,16 @@ class LocalServer {
       }
 
       const remoteUrl = `${this.domain}/${req.originalUrl}`;
-      const headers = JSON.stringify(req.headers);
-      req.headers = JSON.parse(headers.replace(new RegExp(this.localHostname, 'g'), this.hostname));
+      let headers = JSON.stringify({...req.headers});
+      headers = JSON.parse(headers.replace(new RegExp(this.localHostname, 'g'), this.hostname));
+      delete headers['content-length'];
 
       const requestOptions = {
         uri: remoteUrl,
         rejectUnauthorized: false,
         gzip: true,
         method: req.method,
-        headers: req.headers
+        headers
       };
 
       const isForm = req.is('urlencoded') || req.is('multipart');

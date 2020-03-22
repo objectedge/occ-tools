@@ -497,9 +497,7 @@ class LocalServer {
     const middleware = (endpointMappingPath, req, res, next) => {
       const methodMatches = mapping => ['*', 'use'].includes(mapping.method) ? true : req.method.toLowerCase() === mapping.method.toLowerCase();
       const endpointsMappingPerPath = endpointsMapping.filter(mapping => mapping.path === endpointMappingPath && methodMatches(mapping));
-      const mappingPriorizationList = [];
-      const reqQuery = req.query || {};
-      let reqParams = {};
+      let routeReqParams = {};
 
       // Workaround to set the sync argument in all endpoints
       if(req.query.syncRemote) {
@@ -510,86 +508,55 @@ class LocalServer {
       if(req.params) {
         Object.keys(req.params).forEach(param => {
           if(!/[\d+]/.test(param)) {
-            reqParams[param] = req.params[param];
+            routeReqParams[param] = req.params[param];
           }
         });
       }
 
-      for(const endpointMapping of endpointsMappingPerPath) {
-        let points = 0;
+      let foundMapping;
+      const defaultMapping = endpointsMappingPerPath.find(mapping => mapping.id === 'default');
+      const mappingsWithoutDetault = endpointsMappingPerPath.filter(mapping => mapping.id !== 'default');
+      const validationRules = ['path', 'query', 'headers', 'body'];
 
+      const isValidMapping = requestDefinitionParameters => {
+        return validationRules.every(rule => {
+          const definitionReqParameter = requestDefinitionParameters[rule];
+
+          if(!definitionReqParameter) {
+            return true;
+          }
+
+          const routeReqParameter = rule === 'path' ? routeReqParams : req[rule];
+          return deepEqual(definitionReqParameter, routeReqParameter || {});
+        });
+      }
+
+      for(const endpointMapping of mappingsWithoutDetault) {
         const requestDefinition = endpointMapping.requestDefinition;
         const requestDefinitionParameters = requestDefinition.parameters;
 
-        if(endpointMapping.id === 'default') {
-          points--;
-        }
-
         // It's matching at least a simple route, without headers, body, path param or query string
-        // so, adding one point to this mapping
+        // so, it's a valid mapping already
         if(isEmptyObject(requestDefinition.headers) && isEmptyObject(requestDefinition.body)
         && isEmptyObject(requestDefinitionParameters.path) && isEmptyObject(requestDefinitionParameters.query)) {
-          points++;
+          foundMapping = endpointMapping;
+          break;
         }
 
-        if(!isEmptyObject(requestDefinitionParameters.path)) {
-          if(deepEqual(requestDefinitionParameters.path, reqParams)) {
-            points++;
-          } else {
-            points = 0;
-
-            mappingPriorizationList.push({
-              endpointMapping,
-              points
-            });
-
-            // Stop, if the path is not matching, we don't need to continue on searching
-            continue;
-          }
+        // if the rules are not matching, continue search for a valid mapping
+        if(!isValidMapping(requestDefinitionParameters)) {
+          continue;
         }
 
-        if(!isEmptyObject(requestDefinitionParameters.query)) {
-          if(deepEqual(requestDefinitionParameters.query, reqQuery)) {
-            points++;
-          } else {
-            points--;
-          }
-        }
-
-        if(!isEmptyObject(requestDefinition.headers)) {
-          if(deepEqual(requestDefinition.headers, req.headers)) {
-            points++;
-          } else {
-            points--;
-          }
-        }
-
-        if(!isEmptyObject(requestDefinition.body)) {
-          if(deepEqual(requestDefinition.body, req.body)) {
-            points++;
-          } else {
-            points--;
-          }
-        }
-
-        mappingPriorizationList.push({
-          endpointMapping,
-          points
-        });
+        // if it reached here, it's a valid mapping
+        foundMapping = endpointMapping;
       }
 
-      if(!mappingPriorizationList.length) {
+      if(!foundMapping && !defaultMapping) {
         return next('route');
       }
 
-      const defaultMapping = mappingPriorizationList.find(mapping => mapping.endpointMapping.id === 'default');
-      let priorizedMapping = mappingPriorizationList.sort((a, b) => b.points - a.points)[0];
-
-      if(priorizedMapping.points <= 0) {
-        priorizedMapping = defaultMapping;
-      }
-
-      req.__endpointMapping = priorizedMapping.endpointMapping;
+      req.__endpointMapping = foundMapping ? foundMapping : defaultMapping;
       next();
     };
 

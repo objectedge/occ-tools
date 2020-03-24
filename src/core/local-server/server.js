@@ -18,18 +18,9 @@ const grabApiSchema = require('./grab/api-schema');
 const grabLibraries = require('./grab/libraries');
 const Transpiler = require('./transpiler');
 const HostsManager = require('./hosts-manager');
+const helpers = require('./helpers');
 const uniqid = require('uniqid');
-const endpointsMapping = [];
-const deepEqual = require('fast-deep-equal');
 const multiparty = require('multiparty');
-
-function isEmptyObject(obj){
-  return Object.keys(obj).length === 0;
-}
-
-function isObject(obj) {
-  return Object.prototype.toString.call(obj) == "[object Object]";
-}
 
 class LocalServer {
   constructor(options, instance) {
@@ -40,6 +31,8 @@ class LocalServer {
     this.localDomain = config.endpoints.local;
     this.hostname = url.parse(this.domain).hostname;
     this.localHostname = url.parse(this.localDomain).hostname;
+    this.serverPath = __dirname;
+    this.endpointsMapping = [];
     this.hostsManager = new HostsManager({ hostname: this.localHostname, ip: '127.0.0.1' });
     this.syncAllApiRequests = false;
     this.proxyAllApis = false;
@@ -219,7 +212,7 @@ class LocalServer {
 
       const isForm = req.is('urlencoded') || req.is('multipart');
 
-      if(!isForm && ((isObject(req.body) && !isEmptyObject(req.body)) || (!isObject(req.body) && req.body))) {
+      if(!isForm && ((helpers.isObject(req.body) && !helpers.isEmptyObject(req.body)) || (!helpers.isObject(req.body) && req.body))) {
         requestOptions.body = req.is('application/json') ? JSON.stringify(req.body) : req.body;
       }
 
@@ -239,13 +232,13 @@ class LocalServer {
 
               requestOptions.formData = {};
 
-              if(fields && !isEmptyObject(fields)) {
+              if(fields && !helpers.isEmptyObject(fields)) {
                 Object.keys(fields).forEach(fieldKey => {
                   requestOptions.formData[fieldKey] = Buffer.from(fields[fieldKey]);
                 });
               }
 
-              if(files && !isEmptyObject(files)) {
+              if(files && !helpers.isEmptyObject(files)) {
                 Object.keys(files).forEach(fileKey => {
                   requestOptions.formData[fileKey] = files.map(file => fs.createReadStream(file.path));
                 });
@@ -312,11 +305,11 @@ class LocalServer {
               });
             };
 
-            if(isObject(descriptionRequest.parameters.path)) {
+            if(helpers.isObject(descriptionRequest.parameters.path)) {
               attachProperties(req.params, 'path');
             }
 
-            if(isObject(descriptionRequest.parameters.query)) {
+            if(helpers.isObject(descriptionRequest.parameters.query)) {
               attachProperties(req.query, 'query');
             }
           }
@@ -343,7 +336,7 @@ class LocalServer {
             await fs.outputJSON(dataPath, responseContent, { spaces: 2 });
           }
 
-          endpointsMapping.push({
+          this.endpointsMapping.push({
             id: requestId,
             method: descriptionRequest.method,
             path: endpointMapping.path,
@@ -493,257 +486,6 @@ class LocalServer {
     }
   }
 
-  setCCStoreRoutes(app) {
-    const middleware = (endpointMappingPath, req, res, next) => {
-      const methodMatches = mapping => ['*', 'use'].includes(mapping.method) ? true : req.method.toLowerCase() === mapping.method.toLowerCase();
-      const endpointsMappingPerPath = endpointsMapping.filter(mapping => mapping.path === endpointMappingPath && methodMatches(mapping));
-      let routeReqParams = {};
-
-      // Workaround to set the sync argument in all endpoints
-      if(req.query.syncRemote) {
-        req.__syncRemote = req.query.syncRemote;
-        delete req.query.syncRemote;
-      }
-
-      if(req.params) {
-        Object.keys(req.params).forEach(param => {
-          if(!/[\d+]/.test(param)) {
-            routeReqParams[param] = req.params[param];
-          }
-        });
-      }
-
-      let foundMapping;
-      const defaultMapping = endpointsMappingPerPath.find(mapping => mapping.id === 'default');
-      const mappingsWithoutDetault = endpointsMappingPerPath.filter(mapping => mapping.id !== 'default');
-      const validationRules = ['path', 'query', 'headers', 'body'];
-
-      const isValidMapping = requestDefinitionParameters => {
-        return validationRules.every(rule => {
-          const definitionReqParameter = requestDefinitionParameters[rule];
-
-          if(!definitionReqParameter) {
-            return true;
-          }
-
-          const routeReqParameter = rule === 'path' ? routeReqParams : req[rule];
-          return deepEqual(definitionReqParameter, routeReqParameter || {});
-        });
-      }
-
-      for(const endpointMapping of mappingsWithoutDetault) {
-        const requestDefinition = endpointMapping.requestDefinition;
-        const requestDefinitionParameters = requestDefinition.parameters;
-
-        // It's matching at least a simple route, without headers, body, path param or query string
-        // so, it's a valid mapping already
-        if(isEmptyObject(requestDefinition.headers) && isEmptyObject(requestDefinition.body)
-        && isEmptyObject(requestDefinitionParameters.path) && isEmptyObject(requestDefinitionParameters.query)) {
-          foundMapping = endpointMapping;
-          break;
-        }
-
-        // if the rules are not matching, continue search for a valid mapping
-        if(!isValidMapping(requestDefinitionParameters)) {
-          continue;
-        }
-
-        // if it reached here, it's a valid mapping
-        foundMapping = endpointMapping;
-      }
-
-      if(!foundMapping && !defaultMapping) {
-        return next('route');
-      }
-
-      req.__endpointMapping = foundMapping ? foundMapping : defaultMapping;
-      next();
-    };
-
-    for(const currentEndpointMapping of endpointsMapping) {
-      const requestEndpoint = currentEndpointMapping.path;
-      const requestDefinition = currentEndpointMapping.requestDefinition;
-
-      // if it's *, then it can match any method
-      if(requestDefinition.method === '*') {
-        requestDefinition.method = 'use';
-      }
-
-      app[requestDefinition.method](requestEndpoint, middleware.bind(this, requestEndpoint), async (req, res) => {
-        const endpointMapping = req.__endpointMapping;
-        const requestData = endpointMapping.requestData;
-        const responseDefinition = endpointMapping.responseDefinition;
-
-        res.header("OperationId", requestData.operationId);
-        res.header("ResponsePath", endpointMapping.responseDataPath);
-
-        if(this.proxyAllApis) {
-          return this.proxyRequest(req, res);
-        }
-
-        Object.keys(responseDefinition).forEach(requestOption => {
-          if(requestOption === 'headers') {
-            res.set(responseDefinition.headers);
-          }
-
-          if(requestOption === 'statusCode') {
-            res.status(responseDefinition.statusCode);
-          }
-        });
-
-        if(/\/css\//.test(req.originalUrl)) {
-          res.type('css');
-        }
-
-        let content = '';
-
-        try {
-          content = await fs.readFile(endpointMapping.responseDataPath, 'utf8');
-        } catch(error) {
-          winston.error(`The following request was not synced :${req.originalUrl}`);
-          winston.error("Reason: ", error);
-          res.status(500);
-          return res.send({ error });
-        }
-
-        // Sync local with remote
-        if(req.__syncRemote || this.syncAllApiRequests || endpointMapping.id === 'default') {
-          try {
-            content = await this.syncStoreRequest(req, endpointMapping);
-          } catch(error) {
-            winston.error(`The following request was not synced :${req.originalUrl}`);
-            winston.error("Reason: ", error.data);
-            res.status(500);
-            return res.send(error.data);
-          }
-        }
-
-        if(/ccstoreui\/v1\/pages\/layout\//.test(req.originalUrl)) {
-          try {
-            content = await this.replaceLayoutContent(content);
-          } catch(error) {
-            winston.info(error);
-            res.status(500);
-            return res.send(error);
-          }
-        }
-
-        res.send(content);
-      });
-    }
-  }
-
-  setRoutes(app) {
-    app.use(bodyParser.json());
-    app.use(bodyParser.text());
-    app.use(express.urlencoded({ extended: true }))
-
-    // Disabling ETag because OCC tries to parse it and we don't have a valid value for this
-    app.set('etag', false);
-
-    app.get('/sync-all-apis/:status', async (req, res) => {
-      this.syncAllApiRequests = req.params.status === 'true';
-      res.json({ syncingRequests: this.syncAllApiRequests });
-    });
-
-    app.get('/proxy-all-apis/:status', async (req, res) => {
-      this.proxyAllApis = req.params.status === 'true';
-      res.json({ proxyAllApis: this.proxyAllApis });
-    });
-
-    app.get('/occ-server-details', (req, res) => {
-      res.json(endpointsMapping);
-    });
-
-    app.use('/proxy/:path(*)', (req, res) => {
-      this.proxyRequest(req, res, req.params.path);
-    });
-
-    app.get('/mock', (req, res) => {
-      const mockQueryParamPath = req.query.path;
-
-      if(!mockQueryParamPath) {
-        return res.json({ error: true, message: 'Please provide the "path" query param' });
-      }
-
-      const fullPathToMock = path.join(this.mocksPath, mockQueryParamPath);
-      if (fs.existsSync(fullPathToMock)) {
-        return res.json(fs.readJsonSync(fullPathToMock));
-      }
-
-      res.json({ error: true, message: `The mock "${fullPathToMock}" doesn't exist` });
-    });
-
-    app.get(['/js/:asset(*)', '/shared/:asset(*)'], async (req, res) => {
-      let oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, req.originalUrl);
-      let customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, req.originalUrl);
-
-      if(/main\.js/.test(req.params.asset)) {
-        oracleAssetsPath = path.join(config.dir.instanceDefinitions.oracleLibs, 'main.js');
-        customAssetsPath = path.join(config.dir.instanceDefinitions.customLibs, 'main.js');
-      }
-
-      try {
-        if(fs.existsSync(customAssetsPath)) {
-          return res.send(await fs.readFile(customAssetsPath));
-        }
-
-        if(fs.existsSync(oracleAssetsPath)) {
-          return res.send(await fs.readFile(oracleAssetsPath));
-        }
-
-        res.status(404);
-        res.send('File Not Found');
-      } catch(error) {
-        res.status(500);
-        res.send(error);
-      }
-    });
-
-    app.get('/oe-files/:file(*)', async (req, res) => {
-      return this.fileResponse(path.join(config.dir.project_root, 'files', '**', req.params.file), req, res);
-    });
-
-    app.get('/file/*/global/:file(*.js)', this.transpiledJsResponse.bind(this, 'app-level'));
-    app.get('/file/*/widget/:file(*.js)', this.transpiledJsResponse.bind(this, 'widgets'));
-    app.get('/file/*/widget/:version?/:widgetName/*/:file(*)', this.templateResponse.bind(this));
-    app.get('/ccstore/v1/images*', this.proxyRequest.bind(this));
-    app.get('/file/*/css/:file(*)', async (req, res) => {
-      return this.fileResponse(path.join(config.dir.transpiled, 'less', req.params.file), req, res);
-    });
-
-    app.get('*general/:file(*)', async (req, res) => {
-      return this.fileResponse(path.join(config.dir.project_root, 'files', 'general', req.params.file), req, res);
-    });
-
-    app.use(async (req, res, next) => {
-      if(/ccstore/.test(req.originalUrl)) {
-        return next();
-      }
-
-      try {
-        let htmlText = await fs.readFile(path.join(__dirname, 'static', 'index.html'), 'utf8');
-        const navState = {
-          "referrer": "/",
-          "statusCode": "200"
-        };
-
-        let pageNumber = req.originalUrl.match(/[0-9]+$/);
-        if(pageNumber) {
-          navState.pageNumber = pageNumber[0];
-        }
-
-        htmlText = htmlText.replace(/"\{\{ccNavState\}\}"/, JSON.stringify(navState));
-        res.send(htmlText);
-      } catch(error) {
-        res.status(500);
-        res.send(error);
-      }
-    });
-
-    this.setCCStoreRoutes(app);
-  }
-
   loadApiSchema() {
     return new Promise((resolve, reject) => {
       grabApiSchema('grab', this.commandInstance, error => {
@@ -765,6 +507,25 @@ class LocalServer {
 
         resolve();
       });
+    });
+  }
+
+  loadRoutes(app) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const routesPath = path.join(__dirname, 'routes');
+        const routes = await glob(path.join(routesPath, '**', '*.js'));
+
+        routes.filter(route => !/index-page/.test(route)).forEach(routePath => {
+          require(routePath)(app, this);
+        });
+
+        // Loading index page
+        require(path.join(routesPath, 'main', 'index-page'))(app, this);
+        resolve();
+      } catch(error) {
+        return reject(error);
+      }
     });
   }
 
@@ -815,6 +576,7 @@ class LocalServer {
         customSchema = fs.readJsonSync(customSchemaPath);
       }
 
+      let customResponses;
       try {
         customResponses = fs.readdirSync(customResponsesPath);
       } catch(error) {
@@ -903,7 +665,7 @@ class LocalServer {
                 const basePath = !/\/ccstore/.test(requestPath) ? schema.basePath : '';
                 let requestEndpoint = `${basePath}${requestPath}`;
 
-                endpointsMapping.push({
+                this.endpointsMapping.push({
                   id: descriptor.id,
                   method: requestDefinition.method,
                   path: `*${requestEndpoint}`,
@@ -922,8 +684,15 @@ class LocalServer {
         }
       }
 
+      app.use(bodyParser.json());
+      app.use(bodyParser.text());
+      app.use(express.urlencoded({ extended: true }))
+
+      // Disabling ETag because OCC tries to parse it and we don't have a valid value for this
+      app.set('etag', false);
+
       // Setting routes
-      this.setRoutes(app);
+      await this.loadRoutes(app);
       winston.info('Starting api server...');
 
       const server = https.createServer(ssl, app).listen(port, () => {
@@ -963,11 +732,9 @@ module.exports = async function(action, options, callback) {
   const localServer = new LocalServer(options, this);
 
   try {
-    switch(action) {
-      case 'run':
+    if (action === 'run') {
         callback(null, await localServer.run());
-        break;
-      default:
+    } else {
         callback();
     }
   } catch(errorResponse) {

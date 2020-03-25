@@ -550,7 +550,10 @@ class LocalServer {
         }
 
         await this.setLocalFiles();
-        await this.bundleFiles();
+
+        if(!this.options.onlyServer) {
+          await this.bundleFiles();
+        }
 
         if(this.options.updateHosts) {
           winston.info('');

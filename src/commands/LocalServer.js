@@ -114,7 +114,7 @@ LocalServer.prototype.do_run = function (subcmd, opts, args, callback) {
 
     try {
       const instance = new LocalServerInstance('admin');
-      winston.info(await instance.runLocalServer({ updateHosts: opts.updateHosts }));
+      winston.info(await instance.runLocalServer({ ...opts }));
       callback();
     } catch(error) {
       callback(error);
@@ -122,13 +122,22 @@ LocalServer.prototype.do_run = function (subcmd, opts, args, callback) {
   });
 }
 
-LocalServer.prototype.do_run.options = [{
-  names: ['updateHosts', 'u'],
-  helpArg: '[updateHosts]',
-  type: 'bool',
-  default: true,
-  help: '(Optional) It will by default update the hosts in your machine.'
-}];
+LocalServer.prototype.do_run.options = [
+  {
+    names: ['updateHosts', 'u'],
+    helpArg: '[updateHosts]',
+    type: 'bool',
+    default: true,
+    help: '(Optional) It will by default update the hosts in your machine.'
+  },
+  {
+    names: ['onlyServer', 'o'],
+    helpArg: '[onlyServer]',
+    type: 'bool',
+    default: false,
+    help: '(Optional) Only run the server. It will not run the transpiler and bundler'
+  }
+];
 
 LocalServer.prototype.do_run.help = (
   'Run Local Server using the instance local assets and apis.\n\n'

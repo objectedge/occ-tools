@@ -514,14 +514,17 @@ class LocalServer {
     return new Promise(async (resolve, reject) => {
       try {
         const routesPath = path.join(__dirname, 'routes');
-        const routes = await glob(path.join(routesPath, '**', '*.js'));
+        const occRoutes = await glob(path.join(routesPath, 'occ', '**', '*.js'));
 
-        routes.filter(route => !/index-page/.test(route)).forEach(routePath => {
+        // Loading local routes
+        app.use('/local/api', require(path.join(routesPath, 'local'))(this));
+
+        occRoutes.filter(route => !/index-page/.test(route)).forEach(routePath => {
           require(routePath)(app, this);
         });
 
         // Loading index page
-        require(path.join(routesPath, 'main', 'index-page'))(app, this);
+        require(path.join(routesPath, 'occ', 'index-page'))(app, this);
         resolve();
       } catch(error) {
         return reject(error);

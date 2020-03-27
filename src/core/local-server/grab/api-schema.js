@@ -145,6 +145,7 @@ class ApiSchema {
 
               const descriptor = {
                 allowedParameters: requestData.parameters,
+                url: '',
                 request: {
                   parameters: {
                     path: {},

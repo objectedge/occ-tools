@@ -296,6 +296,7 @@ class LocalServer {
           }
 
           descriptor.id = requestId;
+          descriptor.url = req.originalUrl;
           descriptionRequest.statusCode = response.statusCode.toString();
 
           if(descriptionRequest.parameters) {

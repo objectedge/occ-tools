@@ -10,6 +10,21 @@ module.exports = (req, res, next) => {
       return next();
     }
 
+    if(req.query.filter) {
+      try {
+        const queryFilter = JSON5.parse(req.query.filter);
+
+        if(queryFilter.q) {
+          body = body.filter(item => JSON.stringify(item).search(queryFilter.q) > -1);
+        } else {
+          body = find(body, queryFilter);
+        }
+      } catch(error) {
+        winston.error('Not able to parse the filter query parameter');
+        winston.error(error);
+      }
+    }
+
     if(req.query.range) {
       try {
         const range = JSON5.parse(req.query.range);
@@ -25,16 +40,6 @@ module.exports = (req, res, next) => {
         body = body.slice(first, last + 1);
       } catch(error) {
         winston.error('Not able to parse the range query parameter');
-        winston.error(error);
-      }
-    }
-
-    if(req.query.filter) {
-      try {
-        const queryFilter = JSON5.parse(req.query.filter);
-        body = find(body, queryFilter);
-      } catch(error) {
-        winston.error('Not able to parse the filter query parameter');
         winston.error(error);
       }
     }

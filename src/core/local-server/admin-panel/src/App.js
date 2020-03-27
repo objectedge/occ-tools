@@ -1,6 +1,6 @@
 import React from 'react';
-import { Admin, Resource, ListGuesser } from 'react-admin';
-import { UserList } from './users';
+import { Admin, Resource } from 'react-admin';
+import { RequestList } from './requests';
 import simpleRestProvider from 'ra-data-simple-rest';
 
 const dataProvider = simpleRestProvider('https://local.shop-test1.motorolasolutions.com/local/api');
@@ -8,7 +8,7 @@ const dataProvider = simpleRestProvider('https://local.shop-test1.motorolasoluti
 // const App = () => <Admin dataProvider={dataProvider} />;
 const App = () => (
   <Admin dataProvider={dataProvider}>
-    <Resource name="ccstore" list={ListGuesser} />
+    <Resource name="ccstore/request" options={{ label: 'Requests' }} list={RequestList} />
   </Admin>
 );
 

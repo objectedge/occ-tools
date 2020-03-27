@@ -1,7 +1,21 @@
+const responseHandler = require('./responseHandler');
+
 module.exports = localServer => {
   const Router = require('express').Router();
+  const range = require('express-range');
+  const cors = require('cors');
+
+  Router.use(cors({
+    exposedHeaders: 'Content-Range'
+  }));
+
+  Router.use(range({
+    accept: 'items'
+  }));
+
+  Router.use(responseHandler);
 
   Router.use('/widget', require('./widget')(localServer));
-  Router.use('/occ', require('./occ-api')(localServer));
+  Router.use('/ccstore', require('./ccstore')(localServer));
   return Router;
 };

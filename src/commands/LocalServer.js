@@ -124,11 +124,11 @@ LocalServer.prototype.do_run = function (subcmd, opts, args, callback) {
 
 LocalServer.prototype.do_run.options = [
   {
-    names: ['updateHosts', 'u'],
-    helpArg: '[updateHosts]',
+    names: ['hosts', 's'],
+    helpArg: '[hosts]',
     type: 'bool',
-    default: true,
-    help: '(Optional) It will by default update the hosts in your machine.'
+    default: false,
+    help: '(Optional) It will set the hosts in your machine.'
   },
   {
     names: ['onlyServer', 'o'],

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Admin, Resource, ListGuesser } from 'react-admin';
-import { UserList } from './users';import jsonServerProvider from 'ra-data-json-server';
+import { UserList } from './users';
+import simpleRestProvider from 'ra-data-simple-rest';
 
-const dataProvider = jsonServerProvider('https://jsonplaceholder.typicode.com');
+const dataProvider = simpleRestProvider('https://local.shop-test1.motorolasolutions.com/local/api');
+// const dataProvider = jsonServerProvider('https://jsonplaceholder.typicode.com');
 // const App = () => <Admin dataProvider={dataProvider} />;
 const App = () => (
   <Admin dataProvider={dataProvider}>
-      <Resource name="posts" list={ListGuesser} />
-      <Resource name="users" list={UserList} />
+    <Resource name="ccstore" list={ListGuesser} />
   </Admin>
 );
 

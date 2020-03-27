@@ -371,12 +371,13 @@ class LocalServer {
 
   setHosts(log = false) {
     return new Promise(async (resolve, reject) => {
-      if(!this.options.updateHosts) {
+      if(!this.options.hosts) {
         return resolve();
       }
 
       try {
         await this.hostsManager.setHosts(log);
+        winston.info(`Hosts set!`);
         resolve();
       } catch(error) {
         return reject(error);
@@ -386,12 +387,13 @@ class LocalServer {
 
   unsetHosts(log = false) {
     return new Promise(async (resolve, reject) => {
-      if(!this.options.updateHosts) {
+      if(!this.options.hosts) {
         return resolve();
       }
 
       try {
         await this.hostsManager.unsetHosts(log);
+        winston.info(`Hosts unset!`);
         resolve();
       } catch(error) {
         return reject(error);
@@ -552,21 +554,21 @@ class LocalServer {
           await this.loadApiSchema();
         }
 
+        winston.info('');
         await this.setLocalFiles();
 
         if(!this.options.onlyServer) {
           await this.bundleFiles();
         }
 
-        if(this.options.updateHosts) {
-          winston.info('');
-          winston.info(`You can be asked for your root password! We need this to change your hosts file`);
-          winston.info(`If you want to set the hosts manually, please use the option --updateHosts=false`);
+        if(!this.options.hosts) {
+          winston.info(`You will need to the host "${this.localHostname}" in your hosts file(usually /etc/hosts on Unix)`);
+          winston.info(`If you want the hosts to be set automatically, please use the option --hosts`);
+          winston.info(`You can be asked for your root password. We need this to change your hosts file`);
           winston.info('');
         }
 
         await this.setHosts(true);
-        winston.info(`Hosts set!`);
       } catch(error) {
         return reject(error);
       }
@@ -692,7 +694,7 @@ class LocalServer {
 
       app.use(bodyParser.json());
       app.use(bodyParser.text());
-      app.use(express.urlencoded({ extended: true }))
+      app.use(express.urlencoded({ extended: true }));
 
       // Disabling ETag because OCC tries to parse it and we don't have a valid value for this
       app.set('etag', false);
@@ -703,6 +705,7 @@ class LocalServer {
 
       const server = https.createServer(ssl, app).listen(port, () => {
         winston.info(`Running api server on port ${port}`);
+        winston.info(`local domain: ${this.localHostname}`);
       });
 
       exitHook(async callback => {

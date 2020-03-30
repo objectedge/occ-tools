@@ -1,5 +1,3 @@
-const responseHandler = require('./responseHandler');
-
 module.exports = localServer => {
   const Router = require('express').Router();
   const range = require('express-range');
@@ -12,8 +10,6 @@ module.exports = localServer => {
   Router.use(range({
     accept: 'items'
   }));
-
-  Router.use(responseHandler);
 
   Router.use('/widget', require('./widget')(localServer));
   Router.use('/ccstore', require('./ccstore')(localServer));

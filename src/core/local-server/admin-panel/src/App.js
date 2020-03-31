@@ -5,7 +5,11 @@ import Dashboard from './Dashboard';
 import simpleRestProvider from 'ra-data-simple-rest';
 import StorageIcon from '@material-ui/icons/Storage';
 
-const dataProvider = simpleRestProvider('https://local.shop-test1.motorolasolutions.com/local/api');
+const endpoint = '/local-admin/api';
+const isLocalhost = window.location.hostname === 'localhost';
+const urlProvider = isLocalhost ? `https://localhost${endpoint}` : endpoint;
+
+const dataProvider = simpleRestProvider(urlProvider);
 const App = () => (
   <Admin
     title="Admin"

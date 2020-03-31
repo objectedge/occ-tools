@@ -2,7 +2,7 @@ import React from 'react';
 import 'jsoneditor-react/es/editor.min.css';
 import { JsonEditor } from 'jsoneditor-react';
 
-const Editor = ({ json, onChange }) => (
+const EditJSONField = ({ json, onChange }) => (
   <JsonEditor
     allowedModes={['tree', 'code']}
     value={json}
@@ -10,4 +10,4 @@ const Editor = ({ json, onChange }) => (
   />
 );
 
-export default Editor;
+export default EditJSONField;

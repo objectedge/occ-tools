@@ -17,7 +17,9 @@
     "react": "^16.13.1",
     "react-admin": "^3.3.2",
     "react-dom": "^16.13.1",
-    "react-scripts": "3.4.1"
+    "react-final-form": "^6.4.0",
+    "react-scripts": "3.4.1",
+    "react-transition-group": "^4.3.0"
   },
   "scripts": {
     "start": "react-scripts start",

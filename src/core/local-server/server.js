@@ -520,7 +520,7 @@ class LocalServer {
         const occRoutes = await glob(path.join(routesPath, 'occ', '**', '*.js'));
 
         // Loading local routes
-        app.use('/local/api', require(path.join(routesPath, 'local'))(this));
+        app.use('/local-admin/api', require(path.join(routesPath, 'admin'))(this));
 
         occRoutes.filter(route => !/index-page/.test(route)).forEach(routePath => {
           require(routePath)(app, this);

@@ -1,3 +1,9 @@
+/**
+ * routes/admin/index.js
+ *
+ * @description: Index file for all admin routes. All routes with "/local-admin/api" pass through here
+ */
+
 module.exports = localServer => {
   const Router = require('express').Router();
   const range = require('express-range');
@@ -11,7 +17,6 @@ module.exports = localServer => {
     accept: 'items'
   }));
 
-  Router.use('/widget', require('./widget')(localServer));
   Router.use('/ccstore', require('./ccstore')(localServer));
   return Router;
 };

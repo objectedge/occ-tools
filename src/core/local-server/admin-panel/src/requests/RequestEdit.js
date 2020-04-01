@@ -3,6 +3,7 @@ import {
   Edit,
   TabbedForm,
   FormTab,
+  BooleanInput
 } from 'react-admin';
 
 import RequesteEditToolbar from './RequestEditToolbar';
@@ -17,6 +18,7 @@ const RequestEdit = (props) => (
     <TabbedForm toolbar={<RequesteEditToolbar />}>
         <FormTab label="General">
           <RequestField />
+          <BooleanInput source="enabled" />
         </FormTab>
         <FormTab label="Body Payload">
           <BodyField />

@@ -8,7 +8,9 @@ module.exports = (app, localServer) => {
 
   const middleware = (endpointMappingPath, req, res, next) => {
     const methodMatches = mapping => ['*', 'use'].includes(mapping.method) ? true : req.method.toLowerCase() === mapping.method.toLowerCase();
-    const endpointsMappingPerPath = endpointsMapping.filter(mapping => mapping.path === endpointMappingPath && methodMatches(mapping));
+    const isMappingMatching = mapping => mapping.path === endpointMappingPath && methodMatches(mapping) && mapping.enabled;
+    const endpointsMappingPerPath = endpointsMapping.filter(isMappingMatching);
+
     let routeReqParams = {};
 
     // Workaround to set the sync argument in all endpoints

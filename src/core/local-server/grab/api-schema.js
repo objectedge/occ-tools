@@ -161,7 +161,11 @@ class ApiSchema {
                   statusCode,
                   headers: {}
                 },
-                id: 'default'
+                id: 'default',
+                enabled: true,
+                descriptorPath: dataDescriptorPath,
+                responseDataPath: dataPath,
+                operationId: requestId
               };
 
               await fs.ensureDir(responsePath);

@@ -297,6 +297,10 @@ class LocalServer {
 
           descriptor.id = requestId;
           descriptor.url = req.originalUrl;
+          descriptor.responseDataPath = dataPath;
+          descriptor.descriptorPath = descriptorPath;
+          descriptor.operationId = endpointMapping.requestData.operationId;
+          descriptor.enabled = true;
           descriptionRequest.statusCode = response.statusCode.toString();
 
           if(descriptionRequest.parameters) {
@@ -338,11 +342,14 @@ class LocalServer {
           }
 
           this.endpointsMapping.push({
-            id: requestId,
+            id: descriptor.id,
+            responseDataPath: descriptor.responseDataPath,
+            descriptorPath: descriptor.descriptorPath,
+            operationId: descriptor.operationId,
+            enabled: descriptor.enabled,
             method: descriptionRequest.method,
             path: endpointMapping.path,
             requestData: endpointMapping.requestData,
-            responseDataPath: dataPath,
             requestDefinition: descriptionRequest,
             responseDefinition: descriptionResponse
           });
@@ -535,6 +542,56 @@ class LocalServer {
     });
   }
 
+  deleteRoutes(ids = []) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const endpointsMapping = this.endpointsMapping;
+        for(const id of ids) {
+          for(const [index, endpointMapping] of endpointsMapping.entries()) {
+            if(id === endpointMapping.id) {
+              await fs.remove(path.dirname(endpointMapping.responseDataPath));
+              endpointsMapping.splice(index, 1);
+              break;
+            }
+          }
+        }
+
+        resolve();
+      } catch(error) {
+        return reject(error);
+      }
+    });
+  }
+
+  updateRoute(id, body, type) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const endpointsMapping = this.endpointsMapping;
+        for(const [index, endpointMapping] of endpointsMapping.entries()) {
+          if(id === endpointMapping.id) {
+            if(type === 'descriptor') {
+              await fs.writeJSON(endpointMapping.descriptorPath, body, { spaces: 2 });
+              this.endpointsMapping[index].requestDefinition = body.request;
+              this.endpointsMapping[index].responseDefinition = body.response;
+              this.endpointsMapping[index].id = body.id;
+              this.endpointsMapping[index].enabled = body.enabled;
+              this.endpointsMapping[index].descriptorPath = body.descriptorPath;
+              this.endpointsMapping[index].responseDataPath = body.responseDataPath;
+              this.endpointsMapping[index].operationId = body.operationId;
+            } else if(type === 'response') {
+              await fs.writeJSON(endpointMapping.responseDataPath, body, { spaces: 2 });
+            }
+            break;
+          }
+        }
+
+        resolve();
+      } catch(error) {
+        return reject(error);
+      }
+    });
+  }
+
   run() {
     return new Promise(async (resolve, reject) => {
       const customApiDir = config.dir.instanceDefinitions.customApi;
@@ -676,10 +733,13 @@ class LocalServer {
 
                 this.endpointsMapping.push({
                   id: descriptor.id,
+                  responseDataPath,
+                  descriptorPath: definitionPath,
+                  operationId: requestData.operationId,
+                  enabled: descriptor.enabled,
                   method: requestDefinition.method,
                   path: `*${requestEndpoint}`,
                   requestData,
-                  responseDataPath,
                   requestDefinition,
                   responseDefinition
                 });

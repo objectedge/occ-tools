@@ -5,6 +5,7 @@ const winston = require('winston');
 const https = require('https');
 const express = require('express');
 const request = require('request');
+const requestAsync = util.promisify(require('request'));
 const glob = util.promisify(require('glob'));
 const bodyParser = require('body-parser');
 const urlParser = require('url');
@@ -16,11 +17,13 @@ const config = require('../config');
 const devcert = require('devcert');
 const grabApiSchema = require('./grab/api-schema');
 const grabLibraries = require('./grab/libraries');
+const grabPagesResponses = require('./grab/pages-response');
 const Transpiler = require('./transpiler');
 const HostsManager = require('./hosts-manager');
 const helpers = require('./helpers');
 const uniqid = require('uniqid');
 const multiparty = require('multiparty');
+const jsonpath = require('jsonpath');
 
 class LocalServer {
   constructor(options, instance) {
@@ -189,6 +192,238 @@ class LocalServer {
     }
   }
 
+  getCollectionsFromOCC({ ids }) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const response = await requestAsync({
+          uri: `${this.localDomain}/ccstoreui/v1/collections?categoryIds=${ids.join(',')}`,
+          rejectUnauthorized: false,
+          gzip: true,
+          method: 'GET',
+        });
+
+        resolve({ body: JSON.parse(response.body).items, headers: response.headers });
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  getCollectionFromOCC({ id }) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const response = await requestAsync({
+          uri: `${this.localDomain}/ccstoreui/v1/collections/${id}`,
+          rejectUnauthorized: false,
+          gzip: true,
+          method: 'GET',
+        });
+
+        resolve({ body: JSON.parse(response.body), headers: response.headers });
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  getProductsFromOCC({ ids }) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const response = await requestAsync({
+          uri: `${this.localDomain}/ccstoreui/v1/products?productIds=${ids.join(',')}`,
+          rejectUnauthorized: false,
+          gzip: true,
+          method: 'GET',
+        });
+
+        resolve({ body: JSON.parse(response.body).items, headers: response.headers });
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  getProductFromOCC({ id }) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const response = await requestAsync({
+          uri: `${this.localDomain}/ccstoreui/v1/products/${id}`,
+          rejectUnauthorized: false,
+          gzip: true,
+          method: 'GET',
+        });
+
+        resolve({ body: JSON.parse(response.body), headers: response.headers });
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  updateForeignReferences(descriptor, action) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        if(!descriptor.foreignResourcesReferences) {
+          return resolve();
+        }
+
+        for(const foreignResourceReference of descriptor.foreignResourcesReferences) {
+          const foreignResourceDescriptorPath = path.join(foreignResourceReference.resourcePath, 'descriptor.json');
+          if(!fs.existsSync(foreignResourceDescriptorPath)) {
+            continue;
+          }
+
+          const foreignResourceDescriptor = await fs.readJSON(foreignResourceDescriptorPath);
+          const foreignResourceData = await fs.readJSON(path.join(foreignResourceReference.resourcePath, 'data.json'));
+
+          if(action === 'update') {
+            await this.resolveForeignKeys(foreignResourceDescriptor, foreignResourceData);
+          } else if(action === 'delete') {
+            foreignResourceDescriptor.foreignKeys = foreignResourceDescriptor.foreignKeys.filter(resource => resource.resourceId !== descriptor.id);
+            await fs.writeJSON(foreignResourceDescriptorPath, foreignResourceDescriptor, { spaces: 2 });
+            await this.resolveForeignKeys(foreignResourceDescriptor, foreignResourceData);
+          }
+        }
+
+        resolve();
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  resolveForeignKeys(descriptor, body) {
+    const resources = {
+      getProduct: this.getProductFromOCC,
+      getCollection: this.getCollectionFromOCC
+    };
+
+    return new Promise(async (resolve, reject) => {
+      try {
+        let foreignKeys = descriptor.foreignKeys;
+
+        if(!foreignKeys.length) {
+          return resolve(body);
+        }
+
+        for(const foreignKey of foreignKeys) {
+          if(resources[foreignKey.resource]) {
+            try {
+              const resource = await resources[foreignKey.resource].call(this, foreignKey.params);
+              jsonpath.value(body, foreignKey.path, resource.body);
+              await fs.writeJSON(descriptor.responseDataPath, body, { spaces: 2 });
+            } catch(error) {
+              reject(error);
+            }
+          }
+        }
+
+        resolve(body);
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  setForeignKey(foreignKeyDetail, descriptor) {
+    const resources = {
+      getProduct: this.getProductFromOCC,
+      getCollection: this.getCollectionFromOCC
+    };
+
+    return new Promise(async (resolve, reject) => {
+
+      try {
+        const foreignResource = await resources[foreignKeyDetail.resource].call(this, foreignKeyDetail.params);
+        const foreignResourceDescriptorPath = path.resolve(foreignResource.headers.responsepath, '..', 'descriptor.json');
+        const foreignResourceDescriptor = await fs.readJSON(foreignResourceDescriptorPath);
+        foreignResourceDescriptor.foreignResourcesReferences = foreignResourceDescriptor.foreignResourcesReferences || [];
+        foreignResourceDescriptor.foreignResourcesReferences.push({
+          id: descriptor.id,
+          resourcePath: path.dirname(descriptor.responseDataPath)
+        });
+
+        foreignKeyDetail.resourceId = foreignResourceDescriptor.id;
+        descriptor.foreignKeys.push(foreignKeyDetail);
+        await fs.writeJSON(foreignResourceDescriptorPath, foreignResourceDescriptor, { spaces: 2 });
+        resolve();
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  setForeignKeys(responseContent, descriptor, endpointMapping) {
+    return new Promise(async (resolve, reject) => {
+      descriptor.foreignKeys = [];
+
+      try {
+        if(responseContent.parentCategories) {
+          for(const [index, parentCategory] of responseContent.parentCategories.entries()) {
+            await this.setForeignKey({
+              resource: 'getCollection',
+              params: { id: parentCategory.repositoryId },
+              path: `$.parentCategories[${index}]`
+            }, descriptor);
+          }
+        }
+
+        if(responseContent.parentCategory) {
+          await this.setForeignKey({
+            resource: 'getCollection',
+            params: { id: responseContent.parentCategory.repositoryId },
+            path: `$.parentCategory`
+          }, descriptor);
+        }
+
+        if(responseContent.category) {
+          await this.setForeignKey({
+            resource: 'getCollection',
+            params: { id: responseContent.category.id },
+            path: `$.category`
+          }, descriptor);
+        }
+
+        if(endpointMapping.operationId === 'listProducts' && responseContent.items) {
+          for(const [index, product] of responseContent.items.entries()) {
+            await this.setForeignKey({
+              resource: 'getProduct',
+              params: { id: product.id },
+              path: `$.items[${index}]`
+            }, descriptor);
+          }
+        }
+
+        if(responseContent.data) {
+          const data = responseContent.data;
+          const page = data.page;
+
+          if(page) {
+            if(page.product) {
+              await this.setForeignKey({
+                resource: 'getProduct',
+                params: { id: page.product.id  },
+                path: '$.data.page.product'
+              }, descriptor);
+            }
+
+            if(page.category) {
+              await this.setForeignKey({
+                resource: 'getCollection',
+                params: { id: page.category.id  },
+                path: '$.data.page.category'
+              }, descriptor);
+            }
+          }
+        }
+
+        resolve();
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
   syncStoreRequest(req, endpointMapping) {
     const responseDataPath = endpointMapping.responseDataPath;
 
@@ -252,114 +487,126 @@ class LocalServer {
         }
       }
 
-      request(requestOptions, async (error, response, body) => {
-        const returnError = error => reject({ data: error, response });
+      let response;
+      try {
+        response = await requestAsync(requestOptions);
+      } catch(error) {
+        return returnError(error);
+      }
 
-        if(!body) {
-          body = '{ "success": true }';
-        }
+      let body = response.body;
+      const returnError = error => reject({ data: error, response });
 
-        if(error) {
-          return returnError(error);
-        }
+      if(!body) {
+        body = '{ "success": true }';
+      }
 
-        if(/errorCode/.test(body)) {
+      if(/errorCode/.test(body)) {
+        if(/non-existent/.test(body)) {
+          body = `{ "success": false, "error": ${body} }`;
+        } else {
           return returnError(JSON.parse(body));
         }
+      }
 
-        const rawBody = this.replaceRemoteLinks(body);
-        const requestId = uniqid(req.params[1] ? `${req.params[1].replace(/\//g, '-').toLowerCase()}-` : '');
-        const basePath = path.resolve(responseDataPath, '..', '..');
-        const responsePath = path.join(basePath, requestId);
+      const rawBody = this.replaceRemoteLinks(body);
+      const requestId = uniqid(req.params[1] ? `${req.params[1].replace(/\//g, '-').toLowerCase()}-` : '');
+      const basePath = path.resolve(responseDataPath, '..', '..');
+      const responsePath = path.join(basePath, requestId);
+
+      try {
+        await fs.copy(path.join(basePath, 'default'), responsePath);
+      } catch(error) {
+        return returnError(error);
+      }
+
+      try {
+        const descriptorPath = path.join(responsePath, 'descriptor.json');
+        const dataPath = path.join(responsePath, 'data.json');
+        const descriptor = await fs.readJson(descriptorPath);
+        const descriptionRequest = descriptor.request;
+        const descriptionResponse = descriptor.response;
+        const isCSSResponse = /\/pages\/css/.test(req.originalUrl);
+        let responseContent = rawBody;
 
         try {
-          await fs.copy(path.join(basePath, 'default'), responsePath);
+          responseContent = JSON.parse(rawBody);
         } catch(error) {
-          return returnError(error);
+          if(!isCSSResponse) {
+            return returnError(rawBody);
+          }
         }
 
-        try {
-          const descriptorPath = path.join(responsePath, 'descriptor.json');
-          const dataPath = path.join(responsePath, 'data.json');
-          const descriptor = await fs.readJson(descriptorPath);
-          const descriptionRequest = descriptor.request;
-          const descriptionResponse = descriptor.response;
-          const isCSSResponse = /\/pages\/css/.test(req.originalUrl);
-          let responseContent = rawBody;
+        descriptor.id = requestId;
+        descriptor.url = req.originalUrl;
+        descriptor.responseDataPath = dataPath;
+        descriptor.descriptorPath = descriptorPath;
+        descriptor.operationId = endpointMapping.requestData.operationId;
+        descriptor.enabled = true;
+        descriptionRequest.statusCode = response.statusCode.toString();
 
-          try {
-            responseContent = JSON.parse(rawBody);
-          } catch(error) {
-            if(!isCSSResponse) {
-              return returnError(rawBody);
-            }
+        if(descriptionRequest.parameters) {
+          const attachProperties = (properties, type) => {
+            Object.keys(properties).filter(property => !/[\d]+/.test(property)).forEach(property => {
+              descriptionRequest.parameters[type][property] = properties[property];
+            });
+          };
+
+          if(helpers.isObject(descriptionRequest.parameters.path)) {
+            attachProperties(req.params, 'path');
           }
 
-          descriptor.id = requestId;
-          descriptor.url = req.originalUrl;
-          descriptor.responseDataPath = dataPath;
-          descriptor.descriptorPath = descriptorPath;
-          descriptor.operationId = endpointMapping.requestData.operationId;
-          descriptor.enabled = true;
-          descriptionRequest.statusCode = response.statusCode.toString();
-
-          if(descriptionRequest.parameters) {
-            const attachProperties = (properties, type) => {
-              Object.keys(properties).filter(property => !/[\d]+/.test(property)).forEach(property => {
-                descriptionRequest.parameters[type][property] = properties[property];
-              });
-            };
-
-            if(helpers.isObject(descriptionRequest.parameters.path)) {
-              attachProperties(req.params, 'path');
-            }
-
-            if(helpers.isObject(descriptionRequest.parameters.query)) {
-              attachProperties(req.query, 'query');
-            }
+          if(helpers.isObject(descriptionRequest.parameters.query)) {
+            attachProperties(req.query, 'query');
           }
-
-          descriptionRequest.method = req.method.toLowerCase();
-
-          // TODO
-          // Figure out which headers are necessary to be matched in the request
-          //// delete req.headers.cookie;
-          //// req.headers = JSON.parse(this.replaceRemoteLinks(JSON.stringify(req.headers)));
-          //// descriptionRequest.headers = req.headers;
-
-          descriptionRequest.body = req.body ? req.body : {};
-
-          // TODO
-          // Figure out which headers are necessary to present in the response
-          //// descriptionResponse.headers = response.headers;
-
-          await fs.outputJSON(descriptorPath, descriptor, { spaces: 2 });
-
-          if(isCSSResponse) {
-            await fs.outputFile(dataPath, responseContent);
-          } else {
-            await fs.outputJSON(dataPath, responseContent, { spaces: 2 });
-          }
-
-          this.endpointsMapping.push({
-            id: descriptor.id,
-            responseDataPath: descriptor.responseDataPath,
-            descriptorPath: descriptor.descriptorPath,
-            operationId: descriptor.operationId,
-            enabled: descriptor.enabled,
-            method: descriptionRequest.method,
-            path: endpointMapping.path,
-            requestData: endpointMapping.requestData,
-            requestDefinition: descriptionRequest,
-            responseDefinition: descriptionResponse
-          });
-
-          winston.info(`Synced: ${remoteUrl.replace(/[?&]syncRemote=true/, '')}`);
-          resolve(JSON.stringify(responseContent));
-        } catch(error) {
-          return returnError(error);
         }
-      });
+
+        descriptionRequest.method = req.method.toLowerCase();
+
+        // TODO
+        // Figure out which headers are necessary to be matched in the request
+        //// delete req.headers.cookie;
+        //// req.headers = JSON.parse(this.replaceRemoteLinks(JSON.stringify(req.headers)));
+        //// descriptionRequest.headers = req.headers;
+
+        descriptionRequest.body = req.body ? req.body : {};
+
+        // TODO
+        // Figure out which headers are necessary to present in the response
+        //// descriptionResponse.headers = response.headers;
+
+        // Sets all ForeignKeys
+        await this.setForeignKeys(responseContent, descriptor, endpointMapping);
+
+        // Creates the descriptor
+        await fs.outputJSON(descriptorPath, descriptor, { spaces: 2 });
+
+        if(!isCSSResponse) {
+          await fs.outputJSON(dataPath, responseContent, { spaces: 2 });
+        } else {
+          await this.resolveForeignKeys(descriptor, responseContent);
+        }
+
+        const newEndpointMapping = {
+          id: descriptor.id,
+          responseDataPath: descriptor.responseDataPath,
+          descriptorPath: descriptor.descriptorPath,
+          operationId: descriptor.operationId,
+          enabled: descriptor.enabled,
+          method: descriptionRequest.method,
+          path: endpointMapping.path,
+          requestData: endpointMapping.requestData,
+          requestDefinition: descriptionRequest,
+          responseDefinition: descriptionResponse
+        };
+
+        this.endpointsMapping.push(newEndpointMapping);
+
+        winston.info(`Synced: ${remoteUrl.replace(/[?&]syncRemote=true/, '')}`);
+        resolve({ body: JSON.stringify(responseContent), endpointMapping: newEndpointMapping });
+      } catch(error) {
+        return returnError(error);
+      }
     });
   }
 
@@ -498,7 +745,7 @@ class LocalServer {
 
   loadApiSchema() {
     return new Promise((resolve, reject) => {
-      grabApiSchema('grab', this.commandInstance, error => {
+      grabApiSchema('schema', this.commandInstance, error => {
         if(error) {
           return reject(error);
         }
@@ -511,6 +758,18 @@ class LocalServer {
   loadOCCLibraries() {
     return new Promise((resolve, reject) => {
       grabLibraries('grab-all', this.commandInstance, error => {
+        if(error) {
+          return reject(error);
+        }
+
+        resolve();
+      });
+    });
+  }
+
+  loadOCCCatalogResponses() {
+    return new Promise((resolve, reject) => {
+      grabPagesResponses('catalog', this.commandInstance, error => {
         if(error) {
           return reject(error);
         }
@@ -549,6 +808,8 @@ class LocalServer {
         for(const id of ids) {
           for(const [index, endpointMapping] of endpointsMapping.entries()) {
             if(id === endpointMapping.id) {
+              const descriptor = await fs.readJSON(endpointMapping.descriptorPath);
+              await this.updateForeignReferences(descriptor, 'delete');
               await fs.remove(path.dirname(endpointMapping.responseDataPath));
               endpointsMapping.splice(index, 1);
               break;
@@ -578,9 +839,14 @@ class LocalServer {
               this.endpointsMapping[index].descriptorPath = body.descriptorPath;
               this.endpointsMapping[index].responseDataPath = body.responseDataPath;
               this.endpointsMapping[index].operationId = body.operationId;
+
             } else if(type === 'response') {
               await fs.writeJSON(endpointMapping.responseDataPath, body, { spaces: 2 });
             }
+
+            const descriptor = await fs.readJSON(endpointMapping.descriptorPath);
+            await this.updateForeignReferences(descriptor, 'update');
+
             break;
           }
         }
@@ -600,6 +866,7 @@ class LocalServer {
       const customSchemaPath = path.join(customApiDir, 'schema.json');
       const customResponsesPath = path.join(customApiDir, 'responses');
       this.mocksPath = config.dir.mocks;
+      let needsSyncResponses = false;
 
       try {
         if (!fs.existsSync(config.dir.instanceDefinitions.oracleLibs)) {
@@ -610,6 +877,7 @@ class LocalServer {
         if (!fs.existsSync(schemaPath)) {
           winston.info("Environment API Schema is not present locally, downloading it...")
           await this.loadApiSchema();
+          needsSyncResponses = true;
         }
 
         winston.info('');
@@ -769,6 +1037,10 @@ class LocalServer {
         winston.info(`local domain: ${this.localHostname}`);
       });
 
+      if(needsSyncResponses) {
+        await this.loadOCCPagesResponses();
+        needsSyncResponses = false;
+      }
       exitHook(async callback => {
         try {
           await this.closeServer(server);

@@ -84,12 +84,9 @@ module.exports = (app, localServer) => {
     }
 
     app[requestDefinition.method](requestEndpoint, middleware.bind(localServer, requestEndpoint), async (req, res) => {
-      const endpointMapping = req.__endpointMapping;
+      let endpointMapping = req.__endpointMapping;
       const requestData = endpointMapping.requestData;
       const responseDefinition = endpointMapping.responseDefinition;
-
-      res.header("OperationId", requestData.operationId);
-      res.header("ResponsePath", endpointMapping.responseDataPath);
 
       if(localServer.proxyAllApis) {
         return localServer.proxyRequest(req, res);
@@ -110,9 +107,11 @@ module.exports = (app, localServer) => {
       }
 
       let content = '';
+      let descriptor;
 
       try {
         content = await fs.readFile(endpointMapping.responseDataPath, 'utf8');
+        descriptor = await fs.readJSON(endpointMapping.descriptorPath);
       } catch(error) {
         winston.error(`The following request was not synced :${req.originalUrl}`);
         winston.error("Reason: ", error);
@@ -123,7 +122,9 @@ module.exports = (app, localServer) => {
       // Sync local with remote
       if(req.__syncRemote || localServer.syncAllApiRequests || endpointMapping.id === 'default') {
         try {
-          content = await localServer.syncStoreRequest(req, endpointMapping);
+          const newContent = await localServer.syncStoreRequest(req, endpointMapping);
+          content = newContent.body;
+          endpointMapping = newContent.endpointMapping;
         } catch(error) {
           winston.error(`The following request was not synced :${req.originalUrl}`);
           winston.error("Reason: ", error.data);
@@ -142,8 +143,9 @@ module.exports = (app, localServer) => {
         }
       }
 
+      res.header("OperationId", requestData.operationId);
+      res.header("ResponsePath", endpointMapping.responseDataPath);
       res.send(content);
     });
   }
 };
-

@@ -1,8 +1,6 @@
-const fs = require('fs-extra');
 const winston = require('winston');
 const util = require('util');
 const path = require('path');
-const url = require('url');
 const request = util.promisify(require('request'));
 const config = require('../../config');
 
@@ -10,9 +8,7 @@ class PagesResponse {
   constructor(options, instance) {
     this.options = options;
     this.instanceOptions = instance.options;
-
-    this.baseUrl = config.endpoints.dns;
-    this.collectionsEndpoint = `${this.baseUrl}/ccstoreui/v1/collections/rootCategory?catalogId=cloudCatalog&maxLevel=5&expand=childCategories&fields=childCategories.repositoryId,childCategories.displayName,childCategories.route,childCategories.childCategories`;
+    this.baseUrl = config.endpoints.local;
 
     this.pagesDataEndpoints = {
       css: `${this.baseUrl}/ccstoreui/v1/pages/css/%s?occsite=siteUS`,
@@ -23,37 +19,102 @@ class PagesResponse {
 
     this.apiPath = config.dir.instanceDefinitions.oracleApi;
     this.responsesPath = path.join(this.apiPath, 'responses');
-    this.pagesPath = path.join(this.responsesPath, 'getPage');
-    this.layoutsPath = path.join(this.responsesPath, 'getLayout');
-    this.cssPathForLayouts = path.join(this.responsesPath, 'getCssPathForLayout');
+    this.productsPath = path.join(this.responsesPath, 'getProduct');
   }
 
   getCollections() {
-    const allCollections = [];
-    const loopTroughCollections = childCategories => {
-      for(const category of childCategories) {
-        let route = category.route.split('/');
-        route[1] = '*';
-        route = route.join('/');
+    const collectionsEndpoint = `${this.baseUrl}/ccstoreui/v1/collections/rootCategory?catalogId=cloudCatalog&maxLevel=5&expand=childCategories&fields=childCategories.repositoryId,childCategories.displayName,childCategories.route,childCategories.childCategories`;
 
-        allCollections.push({
-          route,
-          displayName: category.displayName,
-          repositoryId: category.repositoryId
-        });
+    const syncAllCollections = childCategories => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          for(const category of childCategories) {
+            winston.info(`Syncing collection ${category.id}...`);
+            await request({
+              uri: `${this.baseUrl}/ccstoreui/v1/collections/${category.id}`,
+              rejectUnauthorized: false,
+              gzip: true,
+              method: 'GET'
+            });
 
-        if(category.childCategories) {
-          loopTroughCollections(category.childCategories);
+            if(category.childCategories) {
+              resolve(syncAllCollections(category.childCategories));
+            } else {
+              resolve();
+            }
+          }
+        } catch(error) {
+          reject(error);
         }
-      }
+      });
     };
 
     return new Promise(async (resolve, reject) => {
       try {
-        let rootCategory = await request(this.collectionsEndpoint);
+        let rootCategory = await request({
+          uri: collectionsEndpoint,
+          rejectUnauthorized: false,
+          gzip: true,
+          method: 'GET'
+        });
         rootCategory = JSON.parse(this.replaceRemoteLinks(rootCategory.body));
-        loopTroughCollections(rootCategory.childCategories);
-        resolve(allCollections);
+        await syncAllCollections(rootCategory.childCategories);
+        resolve();
+      } catch(error) {
+        reject(error);
+      }
+    });
+  }
+
+  getAllProducts() {
+    const limit = 250;
+    const productsEndpoint = `${this.baseUrl}/ccstoreui/v1/products?totalResults=true&totalExpandedResults=true&includeChildren=true&limit=${limit}&offset=%s&fields=id`;
+    const productsEndpointTotal = `${config.endpoints.dns}/ccstoreui/v1/products?totalResults=true&totalExpandedResults=true&includeChildren=true&limit=1&fields=totalResults`;
+
+    let offset = 0;
+    let page = 1;
+    let totalResults = 0;
+
+    const syncProductsPerPage = offset => {
+      return new Promise(async(resolve, reject) => {
+        try {
+          winston.info(`Syncing ${limit} products from page ${page} starting from item ${offset}`);
+          let productsResponse = await request({
+            uri: util.format(productsEndpoint, offset),
+            rejectUnauthorized: false,
+            gzip: true,
+            method: 'GET'
+          });
+
+          const body = JSON.parse(productsResponse.body);
+
+          page++;
+          offset = limit * page;
+          if(offset > body.totalResults) {
+            resolve();
+          } else {
+            resolve(syncProductsPerPage(offset));
+          }
+        } catch(error) {
+          reject(error.message);
+        }
+      });
+    };
+
+    return new Promise(async (resolve, reject) => {
+      try {
+        const totalResultsResponse = await request({
+          uri: productsEndpointTotal,
+          rejectUnauthorized: false,
+          gzip: true,
+          method: 'GET'
+        });
+        const body = JSON.parse(totalResultsResponse.body);
+        totalResults = body.totalResults;
+
+        winston.info(`Syncing ${totalResults} products...`);
+        await syncProductsPerPage(offset);
+        resolve();
       } catch(error) {
         reject(error);
       }
@@ -64,115 +125,56 @@ class PagesResponse {
     return body.replace(new RegExp(config.endpoints.dns, 'g'), config.endpoints.local);
   }
 
-  all() {
+  syncCatalog() {
+    return new Promise(async (resolve, reject) => {
+      winston.info('Syncing catalog...');
+      try {
+        await this.getCollections();
+        await this.getAllProducts();
+        resolve();
+      } catch(error) {
+        reject(error);
+      }
+    })
+  }
+
+  basicSchema() {
     return new Promise(async (resolve, reject) => {
       winston.info(`Getting main page global data from ${this.baseUrl}...\n`);
 
       try {
-        let globalPageData = await request(util.format(this.pagesDataEndpoints.global, 'home'));
+        let globalPageData = await request({
+          uri: util.format(this.pagesDataEndpoints.global, 'home'),
+          rejectUnauthorized: false,
+          gzip: true,
+          method: 'GET'
+        });
+
         globalPageData = JSON.parse(this.replaceRemoteLinks(globalPageData.body));
-
-        let allCollections = await this.getCollections();
         const links = globalPageData.data.global.links;
-
-        for(const collection of allCollections) {
-          links[collection.repositoryId] = {
-            defaultPage: true,
-            displayName: collection.displayName,
-            indexable: true,
-            sites: [],
-            rules: [],
-            source: null,
-            pageTypeItem: { repositoryId: 'categoryPageType' },
-            target: 100,
-            route: collection.route,
-            pageType: 'category',
-            repositoryId: collection.repositoryId,
-            name: collection.repositoryId,
-            supportedDevices: null,
-            secured: false
-          }
-        }
-
-        await fs.ensureDir(this.responsesPath);
-        await fs.ensureDir(this.pagesPath);
-        await fs.ensureDir(this.layoutsPath);
-        await fs.ensureDir(this.cssPathForLayouts);
-
-        const responseDescriptor = {
-          "request": {
-            "parameters": {},
-            "method": "get",
-            "headers": {},
-            "body": {}
-          },
-          "response": {
-            "dataPath": "data.json",
-            "statusCode": "200",
-            "headers": {
-              "content-type": "application/json"
-            }
-          }
-        };
 
         for(const linkKey of Object.keys(links)) {
           const linkObject = links[linkKey];
-          const allPaths = {
-            page: path.join(this.pagesPath, linkObject.pageType, linkObject.repositoryId),
-            layout: path.join(this.layoutsPath, linkObject.pageType, linkObject.repositoryId),
-            css: path.join(this.cssPathForLayouts, linkObject.pageType, linkObject.repositoryId),
-            global: path.join(this.pagesPath, linkObject.pageType, linkObject.repositoryId),
-            pageContext: path.join(this.pagesPath, linkObject.pageType, linkObject.repositoryId)
-          };
-
-          await fs.ensureDir(allPaths.page);
-          await fs.ensureDir(allPaths.layout);
-          await fs.ensureDir(allPaths.css);
 
           for(const pageDataType of Object.keys(this.pagesDataEndpoints)) {
-            const currentPath = allPaths[pageDataType];
             const normalizedRoute = linkObject.route.replace(/^\/{1}/, '');
             const dataTypeEndpoint = util.format(this.pagesDataEndpoints[pageDataType], normalizedRoute);
 
             winston.info(`${linkObject.name} - ${pageDataType}`);
-            const dataTypePath = path.join(currentPath, pageDataType);
-            const dataTypeParameters = url.parse(dataTypeEndpoint, true).query;
-            await fs.ensureDir(dataTypePath);
-
             winston.info(`Getting data from ${dataTypeEndpoint}...`);
-            const routeResponse = await request(dataTypeEndpoint);
-            routeResponse.body = this.replaceRemoteLinks(routeResponse.body);
-            const parseBody = pageDataType === 'css' ? routeResponse.body : JSON.parse(routeResponse.body);
-            const isBodyString = typeof parseBody === 'string';
-
-            // Don't keep information about resolution on layouts, it will force us to generate one layout for each resolution
-            // we should mock this when necessary
-            if(pageDataType === 'layout' && dataTypeParameters['ccvp']) {
-              delete dataTypeParameters['ccvp'];
-            }
-
-            responseDescriptor.request.parameters = dataTypeParameters;
-            responseDescriptor.request.parameters[':path'] = normalizedRoute;
-            const descriptorPath = `${dataTypePath}/descriptor.json`;
-            const dataPath = `${dataTypePath}/data.json`;
-
-            fs.outputJSON(descriptorPath, responseDescriptor, { spaces: 2 });
-            winston.info(`Descriptor has been saved at ${descriptorPath}...`);
-
-            if(!isBodyString) {
-              fs.outputJSON(dataPath, parseBody, { spaces: 2 });
-            } else {
-              fs.outputFile(dataPath, parseBody, { spaces: 2 });
-            }
-
-            winston.info(`Data has been saved at ${dataPath}...\n\n`);
+            await request({
+              uri: dataTypeEndpoint,
+              rejectUnauthorized: false,
+              gzip: true,
+              method: 'GET'
+            });
           }
         }
 
         winston.info('Done!');
         resolve();
       } catch(error) {
-        reject(error);
+        reject(error.message);
       }
     });
   }
@@ -183,8 +185,11 @@ module.exports = async function(action, options, callback) {
 
   try {
     switch(action) {
-      case 'all':
-        callback(null, await pagesResponse.all());
+      case 'schema':
+        callback(null, await pagesResponse.basicSchema());
+        break;
+      case 'catalog':
+        callback(null, await pagesResponse.syncCatalog());
         break;
       default:
         callback();

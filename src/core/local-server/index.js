@@ -1,9 +1,13 @@
+const fs = require('fs-extra');
+const path = require('path');
 const OCC = require('../occ');
 const Auth = require('../auth');
 const libraries = require('./grab/libraries');
 const apiSchema = require('./grab/api-schema');
 const pagesResponse = require('./grab/pages-response');
 const server = require('./server');
+const models = require('./database/models');
+const config = require('../config');
 
 class LocalServer {
   constructor(environment, options) {
@@ -66,4 +70,27 @@ class LocalServer {
   }
 }
 
-module.exports = LocalServer;
+module.exports = (environment, options = {}) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      if(!fs.existsSync(config.localServer.database.development.storage)) {
+        await fs.copy(path.join(__dirname, 'database', 'schema', 'db.development.sqlite'), config.localServer.database.development.storage);
+      }
+
+      const [ OccEnv ] = await models.OccEnv.findOrCreate({
+        where: { name: config.instanceId },
+        defaults: {
+          name: config.instanceId,
+          remoteUrl: config.endpoints.dns,
+          localUrl: config.endpoints.local
+        },
+        raw: true
+      });
+
+      options.occEnv = OccEnv;
+      resolve(new LocalServer(environment, options));
+    } catch(error) {
+      reject(error);
+    }
+  });
+};

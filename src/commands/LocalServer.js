@@ -3,7 +3,7 @@ var util = require('util');
 var Cmdln = require('cmdln').Cmdln;
 var winston = require('winston');
 var config = require('../core/config');
-var LocalServerInstance = require('../core/local-server');
+var localServerInstance = require('../core/local-server');
 var login = require('../core/auth/loginApis');
 var domain = null;
 
@@ -23,7 +23,7 @@ LocalServer.prototype.do_grab_libs = function(subcmd, opts, args, callback) {
     }
 
     try {
-      const instance = new LocalServerInstance('admin');
+      const instance = await localServerInstance('admin');
       winston.info(await instance.grabLibs());
       callback();
     } catch(error) {
@@ -43,7 +43,7 @@ LocalServer.prototype.do_grab_api_schema = function(subcmd, opts, args, callback
     }
 
     try {
-      const instance = new LocalServerInstance('admin');
+      const instance = await localServerInstance('admin');
       winston.info(await instance.grabApiSchema());
       callback();
     } catch(error) {
@@ -63,7 +63,7 @@ LocalServer.prototype.do_grab_pages_response = function(subcmd, opts, args, call
     }
 
     try {
-      const instance = new LocalServerInstance('admin');
+      const instance = await localServerInstance('admin');
       winston.info(await instance.grabPagesResponse(opts));
       callback();
     } catch(error) {
@@ -91,7 +91,7 @@ LocalServer.prototype.do_grab_all = function(subcmd, opts, args, callback) {
     }
 
     try {
-      const instance = new LocalServerInstance('admin');
+      const instance = await localServerInstance('admin');
       winston.info(await instance.grabLibs());
       winston.info(await instance.grabApiSchema());
       winston.info(await instance.grabPagesResponse({ type: 'all' }));
@@ -113,7 +113,7 @@ LocalServer.prototype.do_run = function (subcmd, opts, args, callback) {
     }
 
     try {
-      const instance = new LocalServerInstance('admin');
+      const instance = await localServerInstance('admin');
       winston.info(await instance.runLocalServer({ ...opts }));
       callback();
     } catch(error) {

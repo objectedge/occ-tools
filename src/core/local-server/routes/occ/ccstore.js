@@ -74,78 +74,98 @@ module.exports = (app, localServer) => {
     next();
   };
 
-  for(const currentEndpointMapping of endpointsMapping) {
-    const requestEndpoint = currentEndpointMapping.path;
-    const requestDefinition = currentEndpointMapping.requestDefinition;
+  const schemas = await models.Schema.findAll({ where: { occEnvId: this.instanceOptions.occEnv.id }, raw: true });
+  for(const schema of schemas) {
+    const methods = await models.Method.findAll({ where: { schemaId: Schema.id }, raw: true });
 
-    // if it's *, then it can match any method
-    if(requestDefinition.method === '*') {
-      requestDefinition.method = 'use';
-    }
-
-    app[requestDefinition.method](requestEndpoint, middleware.bind(localServer, requestEndpoint), async (req, res) => {
-      let endpointMapping = req.__endpointMapping;
-      const requestData = endpointMapping.requestData;
-      const responseDefinition = endpointMapping.responseDefinition;
-
-      if(localServer.proxyAllApis) {
-        return localServer.proxyRequest(req, res);
-      }
-
-      Object.keys(responseDefinition).forEach(requestOption => {
-        if(requestOption === 'headers') {
-          res.set(responseDefinition.headers);
-        }
-
-        if(requestOption === 'statusCode') {
-          res.status(responseDefinition.statusCode);
-        }
-      });
-
-      if(/\/css\//.test(req.originalUrl)) {
-        res.type('css');
-      }
-
-      let content = '';
-      let descriptor;
-
+    for(const method of methods) {
       try {
-        content = await fs.readFile(endpointMapping.responseDataPath, 'utf8');
-        descriptor = await fs.readJSON(endpointMapping.descriptorPath);
+        const descriptor = await models.Descriptor.findOne({ where:  { methodId: method.id }, raw: true });
+        this.endpointsMapping.push({
+          schema,
+          method,
+          descriptor
+        });
       } catch(error) {
-        winston.error(`The following request was not synced :${req.originalUrl}`);
-        winston.error("Reason: ", error);
-        res.status(500);
-        return res.send({ error });
+        winston.info(error);
       }
-
-      // Sync local with remote
-      if(req.__syncRemote || localServer.syncAllApiRequests || endpointMapping.id === 'default') {
-        try {
-          const newContent = await localServer.syncStoreRequest(req, endpointMapping);
-          content = newContent.body;
-          endpointMapping = newContent.endpointMapping;
-        } catch(error) {
-          winston.error(`The following request was not synced :${req.originalUrl}`);
-          winston.error("Reason: ", error.data);
-          res.status(500);
-          return res.send(error.data);
-        }
-      }
-
-      if(/ccstoreui\/v1\/pages\/layout\//.test(req.originalUrl)) {
-        try {
-          content = await localServer.replaceLayoutContent(content);
-        } catch(error) {
-          winston.info(error);
-          res.status(500);
-          return res.send(error);
-        }
-      }
-
-      res.header("OperationId", requestData.operationId);
-      res.header("ResponsePath", endpointMapping.responseDataPath);
-      res.send(content);
-    });
+    }
   }
+
+  console.log(endpointsMapping);
+
+  // for(const currentEndpointMapping of endpointsMapping) {
+  //   const requestEndpoint = currentEndpointMapping.schema.schPath;
+  //   const requestDefinition = currentEndpointMapping.requestDefinition;
+
+  //   // if it's *, then it can match any method
+  //   if(requestDefinition.method === '*') {
+  //     requestDefinition.method = 'use';
+  //   }
+
+  //   app[requestDefinition.method](requestEndpoint, middleware.bind(localServer, requestEndpoint), async (req, res) => {
+  //     let endpointMapping = req.__endpointMapping;
+  //     const requestData = endpointMapping.requestData;
+  //     const responseDefinition = endpointMapping.responseDefinition;
+
+  //     if(localServer.proxyAllApis) {
+  //       return localServer.proxyRequest(req, res);
+  //     }
+
+  //     Object.keys(responseDefinition).forEach(requestOption => {
+  //       if(requestOption === 'headers') {
+  //         res.set(responseDefinition.headers);
+  //       }
+
+  //       if(requestOption === 'statusCode') {
+  //         res.status(responseDefinition.statusCode);
+  //       }
+  //     });
+
+  //     if(/\/css\//.test(req.originalUrl)) {
+  //       res.type('css');
+  //     }
+
+  //     let content = '';
+  //     let descriptor;
+
+  //     try {
+  //       content = await fs.readFile(endpointMapping.responseDataPath, 'utf8');
+  //       descriptor = await fs.readJSON(endpointMapping.descriptorPath);
+  //     } catch(error) {
+  //       winston.error(`The following request was not synced :${req.originalUrl}`);
+  //       winston.error("Reason: ", error);
+  //       res.status(500);
+  //       return res.send({ error });
+  //     }
+
+  //     // Sync local with remote
+  //     if(req.__syncRemote || localServer.syncAllApiRequests || endpointMapping.id === 'default') {
+  //       try {
+  //         const newContent = await localServer.syncStoreRequest(req, endpointMapping);
+  //         content = newContent.body;
+  //         endpointMapping = newContent.endpointMapping;
+  //       } catch(error) {
+  //         winston.error(`The following request was not synced :${req.originalUrl}`);
+  //         winston.error("Reason: ", error.data);
+  //         res.status(500);
+  //         return res.send(error.data);
+  //       }
+  //     }
+
+  //     if(/ccstoreui\/v1\/pages\/layout\//.test(req.originalUrl)) {
+  //       try {
+  //         content = await localServer.replaceLayoutContent(content);
+  //       } catch(error) {
+  //         winston.info(error);
+  //         res.status(500);
+  //         return res.send(error);
+  //       }
+  //     }
+
+  //     res.header("OperationId", requestData.operationId);
+  //     res.header("ResponsePath", endpointMapping.responseDataPath);
+  //     res.send(content);
+  //   });
+  // }
 };

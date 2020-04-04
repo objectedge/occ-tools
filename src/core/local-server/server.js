@@ -24,6 +24,7 @@ const helpers = require('./helpers');
 const uniqid = require('uniqid');
 const multiparty = require('multiparty');
 const jsonpath = require('jsonpath');
+const models = require('./database/models');
 
 class LocalServer {
   constructor(options, instance) {
@@ -860,13 +861,7 @@ class LocalServer {
 
   run() {
     return new Promise(async (resolve, reject) => {
-      const customApiDir = config.dir.instanceDefinitions.customApi;
-      const oracleApiDir = config.dir.instanceDefinitions.oracleApi;
-      const schemaPath = path.join(oracleApiDir, 'schema.json');
-      const customSchemaPath = path.join(customApiDir, 'schema.json');
-      const customResponsesPath = path.join(customApiDir, 'responses');
       this.mocksPath = config.dir.mocks;
-      let needsSyncResponses = false;
 
       try {
         if (!fs.existsSync(config.dir.instanceDefinitions.oracleLibs)) {
@@ -874,11 +869,11 @@ class LocalServer {
           await this.loadOCCLibraries();
         }
 
-        if (!fs.existsSync(schemaPath)) {
-          winston.info("Environment API Schema is not present locally, downloading it...")
-          await this.loadApiSchema();
-          needsSyncResponses = true;
-        }
+        // if (!fs.existsSync(schemaPath)) {
+        //   winston.info("Environment API Schema is not present locally, downloading it...")
+        //   await this.loadApiSchema();
+        //   // needsSyncResponses = true;
+        // }
 
         winston.info('');
         await this.setLocalFiles();
@@ -902,118 +897,18 @@ class LocalServer {
       const ssl = await devcert.certificateFor(this.localHostname, { skipHostsFile: true });
       const app = express();
       const port = config.localServer.api.port;
+      const schemas = await models.Schema.findAll({ where: { occEnvId: this.instanceOptions.occEnv.id }, raw: true });
 
-      const schema = fs.readJsonSync(schemaPath, 'utf8');
-      let customSchema;
+      for(const schema of schemas) {
+        const methods = await models.Method.findAll({ where: { schemaId: Schema.id }, raw: true });
 
-      if (fs.existsSync(customSchemaPath)) {
-        customSchema = fs.readJsonSync(customSchemaPath);
-      }
-
-      let customResponses;
-      try {
-        customResponses = fs.readdirSync(customResponsesPath);
-      } catch(error) {
-        winston.info(`It was not able to find any custom-response... using the default one`);
-      }
-
-      let schemaPaths = schema.paths;
-
-      if(customSchema) {
-        const customSchemaPaths = customSchema.paths;
-
-        Object.keys(customSchemaPaths).forEach(customSchemaPath => {
-          // just ignores the original schema path
-          if(Object.keys(schemaPaths).includes(customSchemaPath)) {
-            delete schemaPaths[customSchemaPath];
-          }
-
-          winston.info(`Using custom schema path for ${customSchemaPath}...`);
-        });
-
-        schemaPaths = Object.assign(schemaPaths, customSchemaPaths);
-      }
-
-      for(const requestPath in schemaPaths) {
-        for(const method in schemaPaths[requestPath]) {
-          const requestData = schemaPaths[requestPath][method];
-          let responsePath = path.join(oracleApiDir, requestData.responses);
-          let customRequestsDefinitionPath;
-
-          if(customSchema) {
-            // Only replaces the response path if it contains a custom schema, otherwise just replace the response path
-            if(Object.keys(customSchema.paths).includes(requestPath) && customResponses.includes(requestData.operationId)) {
-              responsePath = path.join(customResponsesPath, requestData.operationId);
-              winston.info(`Using custom schema response for ${requestData.operationId}...`);
-            } else if(!Object.keys(customSchema.paths).includes(requestPath) && customResponses.includes(requestData.operationId)) {
-              customRequestsDefinitionPath = path.join(customResponsesPath, requestData.operationId);
-            }
-          }
-
+        for(const method of methods) {
           try {
-            let requestsDefinition = await glob(path.join(responsePath, '**', 'descriptor.json'));
-
-            // replace the response path by the custom response path
-            if(customRequestsDefinitionPath) {
-              const customRequestsDefinition = await glob(path.join(customRequestsDefinitionPath, '**', 'descriptor.json'));
-              requestsDefinition = requestsDefinition.map(definitionPath => {
-                const oracleLibsDirName = config.dir.instanceDefinitions.oracleLibsDirName;
-                const customLibsDirName = config.dir.instanceDefinitions.customLibsDirName;
-                const customDefinitionPathIndex = customRequestsDefinition.indexOf(definitionPath.replace(oracleLibsDirName, customLibsDirName));
-
-                if(customDefinitionPathIndex > -1) {
-                  return customRequestsDefinition[customDefinitionPathIndex];
-                }
-
-                return definitionPath;
-              });
-
-              // adding new custom responses to request definitions
-              customRequestsDefinition.forEach(itemPath => {
-                if(!requestsDefinition.includes(itemPath)) {
-                  const indexOfDefaultdescriptor = requestsDefinition.indexOf(path.join(responsePath, 'default', 'descriptor.json'));
-
-                  // Don't keep the default response when we have custom response
-                  if(indexOfDefaultdescriptor > -1) {
-                    requestsDefinition.splice(requestsDefinition[indexOfDefaultdescriptor], 1);
-                  }
-
-                  requestsDefinition.push(itemPath);
-                }
-              });
-            }
-
-            requestsDefinition.forEach(definitionPath => {
-              let descriptor;
-
-              try {
-                descriptor = fs.readJsonSync(definitionPath);
-              } catch(error) {
-                winston.info(`Warning: There is no valid descriptor for the request "${requestData.operationId}"`);
-              }
-
-              try {
-                const responseDataPath = path.join(definitionPath, '..', descriptor.response.dataPath);
-                const requestDefinition = descriptor.request;
-                const responseDefinition = descriptor.response;
-                const basePath = !/\/ccstore/.test(requestPath) ? schema.basePath : '';
-                let requestEndpoint = `${basePath}${requestPath}`;
-
-                this.endpointsMapping.push({
-                  id: descriptor.id,
-                  responseDataPath,
-                  descriptorPath: definitionPath,
-                  operationId: requestData.operationId,
-                  enabled: descriptor.enabled,
-                  method: requestDefinition.method,
-                  path: `*${requestEndpoint}`,
-                  requestData,
-                  requestDefinition,
-                  responseDefinition
-                });
-              } catch(error) {
-                winston.info(`Warning: There is no valid response for the request "${requestData.operationId}"`);
-              }
+            const descriptor = await models.Descriptor.findOne({ where:  { methodId: method.id }, raw: true });
+            this.endpointsMapping.push({
+              schema,
+              method,
+              descriptor
             });
           } catch(error) {
             winston.info(error);
@@ -1037,10 +932,11 @@ class LocalServer {
         winston.info(`local domain: ${this.localHostname}`);
       });
 
-      if(needsSyncResponses) {
-        await this.loadOCCPagesResponses();
-        needsSyncResponses = false;
-      }
+      // if(needsSyncResponses) {
+      //   await this.loadOCCPagesResponses();
+      //   needsSyncResponses = false;
+      // }
+
       exitHook(async callback => {
         try {
           await this.closeServer(server);

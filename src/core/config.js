@@ -1,4 +1,5 @@
 var path = require('path');
+var fs = require('fs-extra');
 var os = require('os');
 var occToolsConfigsCore = new (require('./configs'));
 
@@ -84,6 +85,9 @@ if(envDetailsFromProject) {
   }
 }
 
+var databaseDir = path.join(configsDir, 'database');
+fs.ensureDirSync(databaseDir);
+
 var _configDescriptor = {
   project_name: configsData.projects.current.name,
   configsDir: configsDir,
@@ -97,6 +101,17 @@ var _configDescriptor = {
     karma: {
       port: 9876,
       urlRoot: '/app'
+    },
+    database: {
+      development: {
+        dialect: "sqlite",
+        storage: path.resolve(databaseDir, "db.development.sqlite"),
+        logging: false
+      },
+      test: {
+        dialect: "sqlite",
+        storage: ":memory:"
+      }
     }
   },
   dir: {
@@ -109,7 +124,8 @@ var _configDescriptor = {
     instanceDefinitions: instanceDefinitionsDir,
     occToolsProject: path.join(configsData.projects.current.path, 'occ-tools.project.json'),
     transpiled: path.join(absoluteStorefrontDir, '.occ-transpiled'),
-    occComponents: path.join(absoluteStorefrontDir, '.occ-components')
+    occComponents: path.join(absoluteStorefrontDir, '.occ-components'),
+    databaseDir: databaseDir
   },
   theme: {
     name: configsData.projects.current.theme.name,

@@ -6,16 +6,13 @@ const config = require('../../config');
 
 const apiPath = config.dir.instanceDefinitions.oracleApi;
 const responsesPath = path.join(apiPath, 'responses');
-const definitionsPath = path.join(apiPath, 'definitions');
 const webMIMETypes = fs.readJsonSync(path.join(__dirname, '..', 'static', 'webMIMETypes.json'));
-
-const schemaPath = path.join(apiPath, 'schema.json');
+const models = require('../database/models');
 
 class ApiSchema {
   constructor(options, instance) {
     this.options = options;
     this.instanceOptions = instance.options;
-
     this.schemaURL = `${config.endpoints.dns}/ccstore/v1/metadata-catalog`;
     this.registryEndpoint = `${config.endpoints.dns}/ccstoreui/v1/registry`;
   }
@@ -100,6 +97,7 @@ class ApiSchema {
 
             schemaPaths[endpointMapData.url.replace('/ccstoreui/v1', '')] = {
               [method]: {
+                description: '',
                 summary: endpointMapData.id,
                 operationId: endpointMapData.id,
                 produces: [endpointMapData.responseType],
@@ -116,8 +114,25 @@ class ApiSchema {
         }
 
         // Setting paths
-        for(const requestPathKey of Object.keys(schemaPaths)) {
+        for(let requestPathKey of Object.keys(schemaPaths)) {
           const requestPath = schemaPaths[requestPathKey];
+
+          // Normalizing routes for express
+          const value = schemaPaths[requestPathKey];
+          delete schemaPaths[requestPathKey];
+          requestPathKey = requestPathKey.replace(/\{\}/g, '*');
+          requestPathKey = requestPathKey.replace(/\{(.+?):\s?\.\*\}/g, ':$1(*)');
+          requestPathKey = requestPathKey.replace(/\{(.*)\}/g, ':$1');
+          schemaPaths[requestPathKey] = value;
+
+          const [ Schema ] = await models.Schema.findOrCreate({
+            where: { path: requestPathKey },
+            defaults: {
+              path: requestPathKey,
+              occEnvId: this.instanceOptions.occEnv.id
+            },
+            raw: true
+          });
 
           for(const method of Object.keys(requestPath)) {
             const requestData = requestPath[method];
@@ -125,7 +140,19 @@ class ApiSchema {
             const requestId = requestData.operationId;
             const responseMethodPath = path.join(responsesPath, `${requestId}`);
 
-            fs.ensureDirSync(responseMethodPath);
+            const [ MethodType ] = await models.MethodType.findOrCreate({
+              where: { name: method },
+              defaults: {
+                name: method
+              },
+              raw: true
+            });
+
+            if(requestData.parameters) {
+              requestData.parameters.forEach(parameter => {
+                parameter.name = parameter.name.replace(': .*', '');
+              });
+            }
 
             for(const statusCode of Object.keys(responses)) {
               // Don't create structure for the default
@@ -137,14 +164,8 @@ class ApiSchema {
               const dataDescriptorPath = path.join(responsePath, 'descriptor.json');
               const dataPath = path.join(responsePath, 'data.json');
 
-              if(requestData.parameters) {
-                requestData.parameters.forEach(parameter => {
-                  parameter.name = parameter.name.replace(': .*', '');
-                });
-              }
-
               const descriptor = {
-                allowedParameters: requestData.parameters,
+                allowedParameters: requestData.parameters || [],
                 url: '',
                 request: {
                   parameters: {
@@ -167,8 +188,6 @@ class ApiSchema {
                 responseDataPath: dataPath,
                 operationId: requestId
               };
-
-              await fs.ensureDir(responsePath);
 
               if(!responses[statusCode].examples) {
                 responses[statusCode].examples = {
@@ -208,35 +227,71 @@ class ApiSchema {
                   stringifiedResponseData = stringifiedResponseData.replace(/https?:\/\/localhost:[0-9]+?\//g, config.endpoints.local);
                 }
 
-                await fs.outputJSON(dataPath, JSON.parse(stringifiedResponseData), { spaces: 2 });
+                requestData.responseData = stringifiedResponseData;
+              } else {
+                requestData.responseData = '{ "sample": true }';
               }
 
-              await fs.outputJSON(dataDescriptorPath, descriptor, { spaces: 2 });
+              requestData.descriptor = descriptor;
             }
 
-            requestData.responses = path.relative(apiPath, responseMethodPath);
+            const [ Method ] = await models.Method.findOrCreate({
+              where: { methodTypeId: MethodType.id, schemaId: Schema.id },
+              defaults: {
+                summary: requestData.summary,
+                operationId: requestData.operationId,
+                description: requestData.description || '',
+                produces: requestData.produces ? requestData.produces[0] : 'application/json',
+                methodTypeId: MethodType.id,
+                schemaId: Schema.id
+              },
+              raw: true
+            });
+
+            const [ Descriptor ] = await models.Descriptor.findOrCreate({
+              where: { methodTypeId: Method.id },
+              defaults: {
+                url: requestData.descriptor.url,
+                enabled: 1,
+                requestParameters: JSON.stringify(requestData.descriptor.request.parameters),
+                requestStatusCode: requestData.descriptor.request.statusCode,
+                requestHeaders: JSON.stringify(requestData.descriptor.request.headers),
+                requestBody: JSON.stringify(requestData.descriptor.request.body),
+                responseStatusCode: requestData.descriptor.response.statusCode,
+                responseHeaders: JSON.stringify(requestData.descriptor.response.headers),
+                methodTypeId: MethodType.id,
+                methodId: Method.id
+              },
+              raw: true
+            });
+
+            await models.ResponseData.findOrCreate({
+              where: { descriptiorId: Descriptor.id },
+              defaults: {
+                data: requestData.responseData,
+                isDefault: 1,
+                descriptiorId: Descriptor.id
+              },
+              raw: true
+            });
+
+            for(const allowedParameter of requestData.descriptor.allowedParameters) {
+              await models.AllowedParameters.findOrCreate({
+                where: { methodId: Method.id },
+                defaults: {
+                  in: allowedParameter.in,
+                  name: allowedParameter.name,
+                  description: allowedParameter.description,
+                  type: allowedParameter.type || 'string',
+                  required: allowedParameter.required || false,
+                  methodId: Method.id
+                },
+                raw: true
+              })
+            }
           }
         }
 
-        // Setting Definitions
-        for(const schemaDefinitionPath of Object.keys(schemaJSON.definitions)) {
-          const definitionPath = path.join(definitionsPath, `${schemaDefinitionPath}.json`);
-          await fs.outputJSON(definitionPath, schemaJSON.definitions[schemaDefinitionPath], { spaces: 2 });
-        }
-        delete schemaJSON.definitions;
-
-        // Making paths compatible with Express
-        for(let requestPathKey of Object.keys(schemaPaths)) {
-          const value = schemaPaths[requestPathKey];
-          delete schemaPaths[requestPathKey];
-
-          requestPathKey = requestPathKey.replace(/\{\}/g, '*');
-          requestPathKey = requestPathKey.replace(/\{(.+?):\s?\.\*\}/g, ':$1(*)');
-          requestPathKey = requestPathKey.replace(/\{(.*)\}/g, ':$1');
-          schemaPaths[requestPathKey] = value;
-        }
-
-        await fs.outputJSON(schemaPath, schemaJSON, { spaces: 2 });
         winston.info('Schema Updated!');
         resolve();
       } catch(error) {

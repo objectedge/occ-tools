@@ -43,7 +43,11 @@ module.exports = function (stackName, settings, callback) {
         callback(util.format('No stack found with name %s', stackName));
       }
 
-      callback(null, stacks, path.join(_config.dir.project_root, 'stacks', stacks[0].name));
+      var stackTitle = stacks[0].name;
+      var pathStruct = path.join(_config.dir.project_root, 'stacks', stackTitle, 'stack', stackTitle);
+      var pathStructSimple = path.join(_config.dir.project_root, 'stacks', stackTitle);
+      var pathStructUse =  fs.existsSync(pathStruct) ? pathStruct : pathStructSimple;
+      callback(null, stacks, pathStructUse);
     });
   };
 
@@ -75,7 +79,8 @@ module.exports = function (stackName, settings, callback) {
     winston.info('Uploading stack less...');
     async.waterfall([
       function (callback) {
-        fs.readFile(path.join(stackFolder, 'stack.less'), 'utf8', callback);
+        var fileLess =  fs.existsSync(path.join(stackFolder, 'less', 'stack.less')) ? path.join(stackFolder, 'less', 'stack.less') : path.join(stackFolder, 'stack.less');
+        fs.readFile(fileLess, 'utf8', callback);
       },
       function (fileData, callback) {
         async.each(
@@ -119,7 +124,8 @@ module.exports = function (stackName, settings, callback) {
     winston.info('Uploading stack less variables...');
     async.waterfall([
       function (callback) {
-        fs.readFile(path.join(stackFolder, 'stack-variables.less'), 'utf8', callback);
+        var fileLessVariables =  fs.existsSync(path.join(stackFolder, 'less', 'stack-variables.less')) ? path.join(stackFolder, 'less', 'stack-variables.less') : path.join(stackFolder, 'stack-variables.less');
+        fs.readFile(fileLessVariables, 'utf8', callback);
       },
       function (fileData, callback) {
         async.each(
@@ -163,7 +169,8 @@ module.exports = function (stackName, settings, callback) {
     winston.info('Uploading stack template...');
     async.waterfall([
       function (callback) {
-        fs.readFile(path.join(stackFolder, 'stack.template'), 'utf8', callback);
+        var fileTemplate =  fs.existsSync(path.join(stackFolder, 'templates', 'stack.template')) ? path.join(stackFolder, 'templates', 'stack.template') : path.join(stackFolder, 'stack.template');
+        fs.readFile(fileTemplate, 'utf8', callback);
       },
       function (fileData, callback) {
         async.each(

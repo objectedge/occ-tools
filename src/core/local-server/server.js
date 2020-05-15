@@ -897,24 +897,24 @@ class LocalServer {
       const ssl = await devcert.certificateFor(this.localHostname, { skipHostsFile: true });
       const app = express();
       const port = config.localServer.api.port;
-      const schemas = await models.Schema.findAll({ where: { occEnvId: this.instanceOptions.occEnv.id }, raw: true });
+      // const schemas = await models.Schema.findAll({ where: { occEnvId: this.instanceOptions.occEnv.id }, raw: true });
 
-      for(const schema of schemas) {
-        const methods = await models.Method.findAll({ where: { schemaId: Schema.id }, raw: true });
+      // for(const schema of schemas) {
+      //   const methods = await models.Method.findAll({ where: { schemaId: Schema.id }, raw: true });
 
-        for(const method of methods) {
-          try {
-            const descriptor = await models.Descriptor.findOne({ where:  { methodId: method.id }, raw: true });
-            this.endpointsMapping.push({
-              schema,
-              method,
-              descriptor
-            });
-          } catch(error) {
-            winston.info(error);
-          }
-        }
-      }
+      //   for(const method of methods) {
+      //     try {
+      //       const descriptor = await models.Descriptor.findOne({ where:  { methodId: method.id }, raw: true });
+      //       this.endpointsMapping.push({
+      //         schema,
+      //         method,
+      //         descriptor
+      //       });
+      //     } catch(error) {
+      //       winston.info(error);
+      //     }
+      //   }
+      // }
 
       app.use(bodyParser.json());
       app.use(bodyParser.text());

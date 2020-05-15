@@ -1,7 +1,7 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('Descriptor', {
+  const Descriptor = sequelize.define('Descriptor', {
     id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -21,35 +21,15 @@ module.exports = function(sequelize, DataTypes) {
       defaultValue: '0',
       field: 'des_enabled'
     },
-    requestParameters: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      field: 'des_request_parameters'
-    },
     requestStatusCode: {
       type: DataTypes.TEXT,
       allowNull: false,
       field: 'des_request_status_code'
     },
-    requestHeaders: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      field: 'des_request_headers'
-    },
-    requestBody: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      field: 'des_request_body'
-    },
     responseStatusCode: {
       type: DataTypes.TEXT,
       allowNull: false,
       field: 'des_response_status_code'
-    },
-    responseHeaders: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      field: 'des_response_headers'
     },
     methodTypeId: {
       type: DataTypes.INTEGER,
@@ -69,13 +49,13 @@ module.exports = function(sequelize, DataTypes) {
       },
       field: 'met_id'
     },
-    desCreatedAt: {
+    createdAt: {
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'des_created_at'
     },
-    desUpdatedAt: {
-      type: DataTypes.INTEGER,
+    updatedAt: {
+      type: DataTypes.TEXT,
       allowNull: true,
       field: 'des_updated_at'
     }
@@ -84,4 +64,59 @@ module.exports = function(sequelize, DataTypes) {
     createdAt: 'des_created_at',
     updatedAt: 'des_updated_at'
   });
+
+  Descriptor.associate = function (models) {
+    models.Descriptor.belongsTo(models.MethodType, {
+      onDelete: "CASCADE",
+      foreignKey: {
+        name: 'methodTypeId',
+        allowNull: false
+      }
+    });
+
+    models.Descriptor.belongsTo(models.Method, {
+      onDelete: "CASCADE",
+      foreignKey: {
+        name: 'methodId',
+        allowNull: false
+      }
+    });
+
+    models.Descriptor.hasOne(models.RequestBody, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+
+    models.Descriptor.hasOne(models.RequestHeaders, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+
+    models.Descriptor.hasOne(models.RequestParameters, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+
+    models.Descriptor.hasOne(models.ResponseData, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+
+    models.Descriptor.hasOne(models.ResponseHeaders, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+  };
+
+  return Descriptor;
 };

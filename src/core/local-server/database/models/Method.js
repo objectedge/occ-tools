@@ -1,7 +1,7 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('Method', {
+  const Method = sequelize.define('Method', {
     id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -49,13 +49,13 @@ module.exports = function(sequelize, DataTypes) {
       },
       field: 'sch_id'
     },
-    metCreatedAt: {
+    createdAt: {
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'met_created_at'
     },
-    metUpdatedAt: {
-      type: "BLOB",
+    updatedAt: {
+      type: DataTypes.TEXT,
       allowNull: true,
       field: 'met_updated_at'
     }
@@ -64,4 +64,38 @@ module.exports = function(sequelize, DataTypes) {
     createdAt: 'met_created_at',
     updatedAt: 'met_updated_at'
   });
+
+  Method.associate = function (models) {
+    models.Method.belongsTo(models.MethodType, {
+      onDelete: "CASCADE",
+      foreignKey: {
+        name: 'methodTypeId',
+        allowNull: false
+      }
+    });
+
+    models.Method.belongsTo(models.Schema, {
+      onDelete: "CASCADE",
+      foreignKey: {
+        name: 'schemaId',
+        allowNull: false
+      }
+    });
+
+    models.Method.hasMany(models.AllowedParameters, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+
+    models.Method.hasOne(models.Descriptor, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+  };
+
+  return Method;
 };

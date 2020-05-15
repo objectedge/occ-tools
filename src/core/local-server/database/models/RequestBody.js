@@ -1,25 +1,24 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  const ResponseData = sequelize.define('ResponseData', {
+  const RequestBody = sequelize.define('RequestBody', {
     id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true,
       unique: true,
       autoIncrement: true,
-      field: 'rda_id'
+      field: 'rqb_id'
     },
-    data: {
+    key: {
       type: DataTypes.TEXT,
-      allowNull: false,
-      defaultValue: '{ "sample": true }',
-      field: 'rda_data'
+      allowNull: true,
+      field: 'rqb_key'
     },
-    isDefault: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      field: 'rda_is_default'
+    value: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'rqb_value'
     },
     descriptorId: {
       type: DataTypes.INTEGER,
@@ -30,24 +29,24 @@ module.exports = function(sequelize, DataTypes) {
       },
       field: 'des_id'
     },
-    rdaCreatedAt: {
+    createdAt: {
       type: DataTypes.TEXT,
       allowNull: true,
-      field: 'rda_created_at'
+      field: 'rqb_created_at'
     },
-    rdaUpdatedAt: {
+    updatedAt: {
       type: DataTypes.TEXT,
       allowNull: true,
-      field: 'rda_updated_at'
+      field: 'rqb_updated_at'
     }
   }, {
-    tableName: 'rda_response_data',
-    createdAt: 'rda_created_at',
-    updatedAt: 'rda_updated_at'
+    tableName: 'rqb_request_body',
+    createdAt: 'rqb_created_at',
+    updatedAt: 'rqb_updated_at'
   });
 
-  ResponseData.associate = function (models) {
-    models.ResponseData.belongsTo(models.Descriptor, {
+  RequestBody.associate = function (models) {
+    models.RequestBody.belongsTo(models.Descriptor, {
       onDelete: "CASCADE",
       foreignKey: {
         name: 'descriptorId',
@@ -56,5 +55,5 @@ module.exports = function(sequelize, DataTypes) {
     });
   };
 
-  return ResponseData;
+  return RequestBody;
 };

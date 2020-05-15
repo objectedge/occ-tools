@@ -1,7 +1,7 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('Schema', {
+  const Schema = sequelize.define('Schema', {
     id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -39,4 +39,23 @@ module.exports = function(sequelize, DataTypes) {
     createdAt: 'oce_created_at',
     updatedAt: 'oce_updated_at'
   });
+
+  Schema.associate = function(models) {
+    models.Schema.hasMany(models.Method, {
+      foreignKey: {
+        name: 'schemaId',
+        allowNull: false
+      }
+    });
+
+    models.Schema.belongsTo(models.OccEnv, {
+      onDelete: "CASCADE",
+      foreignKey: {
+        name: 'occEnvId',
+        allowNull: false
+      }
+    });
+  };
+
+  return Schema;
 };

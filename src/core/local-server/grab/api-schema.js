@@ -3,6 +3,7 @@ const path = require('path');
 const winston = require('winston');
 const request = require('request');
 const config = require('../../config');
+const { isObject, isEmptyObject } = require('../helpers');
 
 const apiPath = config.dir.instanceDefinitions.oracleApi;
 const responsesPath = path.join(apiPath, 'responses');
@@ -253,24 +254,64 @@ class ApiSchema {
               defaults: {
                 url: requestData.descriptor.url,
                 enabled: 1,
-                requestParameters: JSON.stringify(requestData.descriptor.request.parameters),
                 requestStatusCode: requestData.descriptor.request.statusCode,
-                requestHeaders: JSON.stringify(requestData.descriptor.request.headers),
-                requestBody: JSON.stringify(requestData.descriptor.request.body),
                 responseStatusCode: requestData.descriptor.response.statusCode,
-                responseHeaders: JSON.stringify(requestData.descriptor.response.headers),
                 methodTypeId: MethodType.id,
                 methodId: Method.id
               },
               raw: true
             });
 
+            const additionalDescriptorFields = [
+              { model: models.RequestParameters, field: requestData.descriptor.request.parameters },
+              { model: models.RequestHeaders, field: requestData.descriptor.request.headers },
+              { model: models.RequestBody, field: requestData.descriptor.request.body },
+              { model: models.ResponseHeaders, field: requestData.descriptor.response.headers }
+            ];
+
+            const iterateOverAdditionalField = (key, value, model, descriptorId) => {
+              return new Promise(async (resolve, reject) => {
+                try {
+                  if(!isObject(value) && value) {
+                    await model.findOrCreate(
+                      {
+                        where: { descriptorId, key, value },
+                        defaults: {
+                          key,
+                          value,
+                          descriptorId
+                        }
+                      });
+                    resolve();
+                    return;
+                  }
+
+                  for(const key of Object.keys(value)) {
+                    resolve(iterateOverAdditionalField(key, value[key], model, descriptorId));
+                  }
+
+                  resolve();
+                } catch(error) {
+                  reject(error);
+                }
+              });
+            }
+
+            for(const additionalField of additionalDescriptorFields) {
+              const model = additionalField.model;
+              const field = additionalField.field;
+
+              for(const key of Object.keys(field)) {
+                await iterateOverAdditionalField(key, field[key], model, Descriptor.id);
+              }
+            }
+
             await models.ResponseData.findOrCreate({
-              where: { descriptiorId: Descriptor.id },
+              where: { descriptorId: Descriptor.id },
               defaults: {
                 data: requestData.responseData,
                 isDefault: 1,
-                descriptiorId: Descriptor.id
+                descriptorId: Descriptor.id
               },
               raw: true
             });

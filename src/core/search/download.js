@@ -29,14 +29,14 @@ module.exports = function(app, callback) {
     self._occ.request(options, function(error, body){
       if (error){
         callback(error);
-      } 
+      }
       callback();
     });
   };
 
   /**
    * Unzip files on seach project folder.
-   */  
+   */
   var unzipFiles = function(callback) {
     winston.info('Unzipping the application');
     extract(tempFile, { dir: path.join(_config.dir.search_root, app) }, function (err) {

@@ -1,7 +1,7 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('AllowedParameters', {
+  const AllowedParameters = sequelize.define('AllowedParameters', {
     id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -44,12 +44,12 @@ module.exports = function(sequelize, DataTypes) {
       },
       field: 'met_id'
     },
-    apaCreatedAt: {
+    createdAt: {
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'apa_created_at'
     },
-    apaUpdatedAt: {
+    updatedAt: {
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'apa_updated_at'
@@ -59,4 +59,16 @@ module.exports = function(sequelize, DataTypes) {
     createdAt: 'apa_created_at',
     updatedAt: 'apa_updated_at'
   });
+
+  AllowedParameters.associate = function(models) {
+    models.AllowedParameters.belongsTo(models.Method, {
+      onDelete: "CASCADE",
+      foreignKey: {
+        name: 'methodId',
+        allowNull: false
+      }
+    });
+  };
+
+  return AllowedParameters;
 };

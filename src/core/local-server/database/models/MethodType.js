@@ -1,7 +1,7 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('MethodType', {
+  const MethodType = sequelize.define('MethodType', {
     id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -15,12 +15,12 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: false,
       field: 'mty_name'
     },
-    mtyCreatedAt: {
+    createdAt: {
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'mty_created_at'
     },
-    mtyUpdatedAt: {
+    updatedAt: {
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'mty_updated_at'
@@ -30,4 +30,22 @@ module.exports = function(sequelize, DataTypes) {
     createdAt: 'mty_created_at',
     updatedAt: 'mty_updated_at'
   });
+
+  MethodType.associate = function(models) {
+    models.MethodType.hasMany(models.Method, {
+      foreignKey: {
+        name: 'methodTypeId',
+        allowNull: false
+      }
+    });
+
+    models.MethodType.hasMany(models.Descriptor, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+  };
+
+  return MethodType;
 };

@@ -1,7 +1,7 @@
 /* jshint indent: 2 */
 
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('OccEnv', {
+  const OccEnv = sequelize.define('OccEnv', {
     id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -25,12 +25,12 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: false,
       field: 'oce_local_url'
     },
-    oceCreatedAt: {
+    createdAt: {
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'oce_created_at'
     },
-    oceUpdatedAt: {
+    updatedAt: {
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'oce_updated_at'
@@ -40,4 +40,15 @@ module.exports = function(sequelize, DataTypes) {
     createdAt: 'oce_created_at',
     updatedAt: 'oce_updated_at'
   });
+
+  OccEnv.associate = function(models) {
+    models.OccEnv.hasMany(models.Schema, {
+      foreignKey: {
+        name: 'id',
+        allowNull: false
+      }
+    });
+  };
+
+  return OccEnv;
 };

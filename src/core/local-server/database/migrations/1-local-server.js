@@ -10,7 +10,11 @@ var Sequelize = require('sequelize');
  * createTable "met_method", deps: []
  * createTable "mty_method_type", deps: []
  * createTable "oce_occ_env", deps: []
+ * createTable "rqb_request_body", deps: []
+ * createTable "rqh_request_headers", deps: []
+ * createTable "rqp_request_parameters", deps: []
  * createTable "rda_response_data", deps: []
+ * createTable "rph_response_headers", deps: []
  * createTable "sch_schema", deps: []
  *
  **/
@@ -18,7 +22,7 @@ var Sequelize = require('sequelize');
 var info = {
     "revision": 1,
     "name": "local-server",
-    "created": "2020-04-03T23:13:58.897Z",
+    "created": "2020-04-06T21:13:33.862Z",
     "comment": ""
 };
 
@@ -75,7 +79,47 @@ var migrationCommands = [{
     {
         fn: "createTable",
         params: [
+            "rqb_request_body",
+            {
+
+            },
+            {}
+        ]
+    },
+    {
+        fn: "createTable",
+        params: [
+            "rqh_request_headers",
+            {
+
+            },
+            {}
+        ]
+    },
+    {
+        fn: "createTable",
+        params: [
+            "rqp_request_parameters",
+            {
+
+            },
+            {}
+        ]
+    },
+    {
+        fn: "createTable",
+        params: [
             "rda_response_data",
+            {
+
+            },
+            {}
+        ]
+    },
+    {
+        fn: "createTable",
+        params: [
+            "rph_response_headers",
             {
 
             },

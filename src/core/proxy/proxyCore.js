@@ -493,25 +493,26 @@ OCCProxy.prototype.getWidgetOptions = function (options, done) {
   //Populate all templates and js files
   fs.walk(path.join(options.widgetPath)).on('data', function (item) {
     if(item.stats.isFile()) {
-      if(item.path.indexOf('/js/') > -1 && !isES6) {
+      const dash = path.sep;
+      if(item.path.indexOf(`${dash}js${dash}`) > -1 && !isES6) {
 
         //Ignore SRC folder for now
-        if(item.path.indexOf('/js/src') > -1) {
+        if(item.path.indexOf(`${dash}js${dash}src`) > -1) {
           return;
         }
 
         options.widgetFiles.js.push(item.path);
       }
 
-      if(item.path.indexOf('/templates/') > -1) {
+      if(item.path.indexOf(`${dash}templates${dash}`) > -1) {
         options.widgetFiles.template.push(item.path);
       }
 
-      if(item.path.indexOf('/less/') > -1) {
+      if(item.path.indexOf(`${dash}less${dash}`) > -1) {
         options.widgetFiles.less.push(item.path);
       }
 
-      if(item.path.indexOf('/' + options.widgetName + '/locales/') > -1) {
+      if(item.path.indexOf(`${dash}${options.widgetName}${dash}locales${dash}`) > -1) {
         var lang = path.basename(path.dirname(item.path));
         options.widgetFiles.locales[lang] = item.path;
       }

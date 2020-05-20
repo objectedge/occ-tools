@@ -152,7 +152,7 @@ routes.mainHtmlPage = function () {
               }
 
               elementsFile.forEach(function (elementPath) {
-                var elementName = path.basename(path.resolve(elementPath, '../..'));
+                var elementName = path.basename(path.resolve(elementPath, '..', '..'));
                 var elementObject = {};
                 elementObject[elementName] = fs.readFileSync(elementPath, 'utf8');
                 widgetsTemplates.elements[widget.widgetName].push(elementObject);

@@ -1,6 +1,7 @@
 # OCC Tools
 
-**Important Note: This is still on alpha version, so expect that this version is not stable to use in real, production workflow and also significant changes on the application itself can happen.**
+**Important Note: This is still on alpha version, so expect that this version is not stable to use in real, production
+workflow and also significant changes on the application itself can happen.**
 
 ## Overview
 
@@ -24,9 +25,9 @@ npm install -g occ-tools
 ## Usage
 
 OCC Tools has two modes: normal and interactive mode. The normal mode will execute the command you pass on the args and
-then the application will exit. This is the way that OCC tools used to run until version 2.x. To run as normal mode you pass
-the command you want to run on the `--execute` (or the short `-e`) option. For example, let's say you want to upload a
-widget called `MyWidget`. To do so, run:
+then the application will exit. This is the way that OCC tools used to run until version 2.x. To run as normal mode you
+pass the command you want to run on the `--execute` (or the short `-e`) option. For example, let's say you want to
+upload a widget called `MyWidget`. To do so, run:
 
 ```bash
 $ occ-tools --execute "widget upload MyWidget"

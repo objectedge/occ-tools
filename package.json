@@ -23,7 +23,9 @@
     "url": "https://www.objectedge.com"
   },
   "scripts": {
-    "start": "node bin/occ-tools.js"
+    "start": "node bin/occ-tools.js",
+    "lint": "eslint ./lib ./bin",
+    "format": "prettier --write ."
   },
   "repository": {
     "type": "git",

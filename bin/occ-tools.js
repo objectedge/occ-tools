@@ -22,6 +22,7 @@ process.on("uncaughtException", (err, origin) => {
 
 async function main() {
   const args = parseArguments(process.argv.slice(2));
+  const mode = args.execute || args.e ? CliMode.STANDALONE : CliMode.REPL;
 
   await loadSettings();
   await loadCommands();
@@ -33,7 +34,7 @@ async function main() {
     await executionContext().init();
   }
 
-  await runCliApplication(args.run ? CliMode.STANDALONE : CliMode.REPL, args);
+  await runCliApplication(mode, args);
 }
 
 main();

@@ -16,7 +16,7 @@
   "main": "lib/index.js",
   "bin": "./bin/occ-tools.js",
   "engines": {
-    "node": ">=v14"
+    "node": ">=v12"
   },
   "author": {
     "name": "Object Edge Inc.",

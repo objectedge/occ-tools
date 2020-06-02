@@ -1,39 +1,73 @@
-# Summary
+# OCC Tools
 
-This is the CLI version of OCC-TOOLS and intend to make all occ-tools facilities available directly in your terminal.
+**Important Note: This version is still on alpha version, so expect that this version is not stable to use in real, production workflow and also significant changes on the application itself can happen.**
 
-# Usage
+## Overview
 
-https://github.com/objectedge/occ-tools/wiki
+OCC Tools was created to help with the development on
+[Oracle Commerce Cloud](https://docs.oracle.com/en/cloud/saas/commerce-cloud/index.html) platform. It makes easier to
+perform certain development tasks like:
 
-___
+- Uploading/download widgets
+- Upload/download themes
 
-# Development version
-
-Use this to debug your occ-tools.
-
-## Requirements
-
-NVM - https://github.com/creationix/nvm
+And much more! Please check the [User Guide](http://objectedge.github.io/occ-tools/user-guide) for the complete list.
 
 ## Installation
 
-- Open a terminal session
-- Go to the directory where you have cloned the occ-tools-cli
-- Install the nodejs version 13.2+
-- Run: `npm install`
+To install OCC Tools, run:
 
-## Running
+```bash
+npm install -g occ-tools
+```
 
-- Open a terminal session and go to the occ-tools-cli directory
-- Run: `node index`
+## Usage
 
-## Setting an occ-tools-dev alias
+OCC Tools has two modes: normal and interactive mode. The normal mode will execute the command you pass on the args and
+then the application will exit. This is the way that OCC tools used to run until version 2.x. To run as normal mode you pass
+the command you want to run on the `--execute` (or the short `-e`) option. For example, let's say you want to upload a
+widget called `MyWidget`. To do so, run:
 
-- Open your .bashrc(probably `~/.bashrc`) file with some editor, like vi, vim, nano...
-- Insert in your bashrc file the alias `alias occ-tools-dev="node [YOUR_OCC_TOOLS_PATH]/index"`. Replace `[YOUR_OCC_TOOLS_PATH]` with your absolute path to occ-tools-cli.
-- Run `source ~/.bashrc`
-- Then, you can type `occ-tools-dev` in your terminal when you need to debug something or develop a new feature, fix a bug.
+```bash
+$ occ-tools --execute "widget upload MyWidget"
+```
 
+The new (and now default) interactive mode will wait for any commands you enter, execute them, and them go back wait for
+new commands, until you explicitly ask it to exit the application. To use this mode just run the command without any
+arguments:
 
+```bash
+$ occ-tools
 
+# Entering on interactive mode
+occ-tools $
+```
+
+Using the example above, on interactive mode you just type the command you want:
+
+```bash
+occ-tools $ widget upload MyWidget
+```
+
+Then the application will execute it and go back to prompt you for more commands.
+
+To exit the application just enter the `exit` command:
+
+```bash
+occ-tools $ exit
+
+# Exiting application...
+
+$
+```
+
+For more commands and more details, please check the [User Guide](http://objectedge.github.io/occ-tools/user-guide).
+
+## Resources
+
+- [Getting Started](http://objectedge.github.io/occ-tools/getting-started)
+- [User Guide](http://objectedge.github.io/occ-tools/user-guide)
+
+## License
+
+OCC Tools is [MIT licensed](./LICENSE).

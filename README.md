@@ -1,6 +1,6 @@
 # OCC Tools
 
-**Important Note: This version is still on alpha version, so expect that this version is not stable to use in real, production workflow and also significant changes on the application itself can happen.**
+**Important Note: This is still on alpha version, so expect that this version is not stable to use in real, production workflow and also significant changes on the application itself can happen.**
 
 ## Overview
 

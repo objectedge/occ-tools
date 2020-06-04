@@ -3,7 +3,7 @@ module.exports = {
   siteMetadata: {
     title: `OCC Tools`,
     description: "",
-    author: "Object Edge"
+    author: "Object Edge",
   },
   plugins: [
     `gatsby-plugin-react-helmet`,
@@ -16,6 +16,7 @@ module.exports = {
     },
     `gatsby-transformer-sharp`,
     `gatsby-plugin-sharp`,
+    `gatsby-plugin-styled-components`,
     // {
     //   resolve: `gatsby-plugin-manifest`,
     //   options: {

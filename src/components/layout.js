@@ -7,12 +7,13 @@
 
 import React from "react"
 import PropTypes from "prop-types"
-import { useStaticQuery, graphql } from "gatsby"
-import { createGlobalStyle, ThemeProvider } from "styled-components"
 import WebFont from "webfontloader"
+import { useStaticQuery, graphql } from "gatsby"
+import styled, { createGlobalStyle, ThemeProvider } from "styled-components"
 
 import { backgroundColor, foregroundColor } from "./theme"
 import Header from "./header"
+import Sidebar from "./sidebar"
 
 const GlobalStyles = createGlobalStyle`
   html {
@@ -31,8 +32,17 @@ const GlobalStyles = createGlobalStyle`
     color: ${foregroundColor};
   }
 `
+const Main = styled.main`
 
-const Layout = ({ children }) => {
+  @media(min-width: 768px) {
+    padding-top: ${props => props.sidebarLayout ? "4rem" : "5rem"};
+    padding-left: ${props => props.sidebarLayout ? "19rem" : "0"};
+    padding-right: ${props => props.sidebarLayout ? "1rem" : "0"};
+    padding-bottom: ${props => props.sidebarLayout ? "1rem" : "0"};
+  }
+`
+
+const Layout = ({ type, children }) => {
   WebFont.load({
     google: {
       families: [
@@ -50,18 +60,25 @@ const Layout = ({ children }) => {
       }
     }
   `)
+  const sidebarLayout = type === 'with-sidebar'
 
   return (
     <ThemeProvider theme={{ mode: "light" }}>
       <GlobalStyles />
-      <Header siteTitle={data.site.siteMetadata.title} />
-      <main>{children}</main>
+      <Header siteTitle={data.site.siteMetadata.title} sticky={sidebarLayout} slim={sidebarLayout} />
+      {sidebarLayout && <Sidebar />}
+      <Main sidebarLayout={sidebarLayout}>{children}</Main>
     </ThemeProvider>
   )
 }
 
 Layout.propTypes = {
   children: PropTypes.node.isRequired,
+  type: PropTypes.oneOf(["full", "with-sidebar"]),
+}
+
+Layout.defaultProps = {
+  type: "with-sidebar"
 }
 
 export default Layout

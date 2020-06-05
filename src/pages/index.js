@@ -1,6 +1,5 @@
 import React from "react"
 import styled from "styled-components"
-import { Link } from "gatsby"
 
 import Layout from "../components/layout"
 import SEO from "../components/seo"
@@ -10,6 +9,11 @@ const MainSection = styled.div`
   background-image: linear-gradient(180deg,#fafafa,#fafafa);
   padding-top: 5rem;
   padding-bottom: 5rem;
+
+  @media(min-width: 1200px) {
+    padding-top: 7rem;
+    padding-bottom: 7rem;
+  }
 `
 const HomeContainer = styled.div`
   width: 80%;
@@ -50,14 +54,14 @@ const HomeSubTitle = styled.p`
 `
 
 const IndexPage = () => (
-  <Layout>
+  <Layout type="full">
     <SEO title="Home" />
 
     <MainSection>
       <HomeContainer>
         <HomeTitle>Your development more productive on the Oracle Commerce Cloud platform</HomeTitle>
         <HomeSubTitle>OCC Tools is a free and open source CLI application that makes easier to perform development tasks on the Oracle Commerce Cloud platform.</HomeSubTitle>
-        <NavigationBtn>Get Started</NavigationBtn>
+        <NavigationBtn to="/docs/getting-started/">Get Started</NavigationBtn>
       </HomeContainer>
     </MainSection>
   </Layout>

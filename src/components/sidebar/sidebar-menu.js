@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import styled from "styled-components"
-import { Link } from "gatsby"
+import { Link, withPrefix } from "gatsby"
 import { AiOutlineRight, AiOutlineDown } from "react-icons/ai"
 
 import { sidebarForegroundColor, menuItemPadding } from "./styles"
@@ -84,7 +84,7 @@ const SidebarMenuItem = ({ item }) => {
   let openedByDefault = false
 
   if (typeof window !== "undefined") {
-    openedByDefault = window.location.pathname.startsWith(item.slug)
+    openedByDefault = window.location.pathname.startsWith(withPrefix(item.slug))
   }
 
   const [submenuOpen, setSubmenuOpen] = useState(openedByDefault)

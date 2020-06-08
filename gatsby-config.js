@@ -4,6 +4,22 @@ module.exports = {
     title: `OCC Tools`,
     description: "",
     author: "Object Edge",
+    sidebarMenu: [
+      { title: "Introduction", slug: "/docs/" },
+      { title: "Getting Started", slug: "/docs/getting-started/" },
+      {
+        title: "User Guide",
+        slug: "/docs/user-guide/",
+        children: [
+          {
+            title: "Commands Reference",
+            slug: "/docs/user-guide/commands-reference/",
+          },
+        ],
+      },
+      { title: "Developer Guide", slug: "/docs/developer-guide/" },
+      { title: "API", slug: "/docs/api/" },
+    ],
   },
   plugins: [
     `gatsby-plugin-react-helmet`,
@@ -32,20 +48,11 @@ module.exports = {
         },
       },
     },
-    // {
-    //   resolve: `gatsby-plugin-manifest`,
-    //   options: {
-    //     name: `gatsby-starter-default`,
-    //     short_name: `starter`,
-    //     start_url: `/`,
-    //     background_color: `#004de6`,
-    //     theme_color: `#004de6`,
-    //     display: `minimal-ui`,
-    //     icon: `src/images/oe_insignia.svg`, // This path is relative to the root of the site.
-    //   },
-    // },
-    // this (optional) plugin enables Progressive Web App + Offline functionality
-    // To learn more, visit: https://gatsby.dev/offline
-    // `gatsby-plugin-offline`,
+    {
+      resolve: `gatsby-plugin-favicon`,
+      options: {
+        logo: "./src/images/favicon.png",
+      },
+    },
   ],
 }

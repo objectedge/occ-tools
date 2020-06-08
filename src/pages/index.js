@@ -4,7 +4,6 @@ import PropTypes from "prop-types"
 import theme from "styled-theming"
 
 import Layout from "../components/layout"
-import SEO from "../components/seo"
 import NavigationBtn from "../components/ui-kit/navigation-btn"
 import CodeBlock from "../components/ui-kit/code-block"
 
@@ -32,7 +31,6 @@ HomeSection.defaultProps = {
 }
 
 const SectionContainer = styled.div`
-  padding: 0 1rem;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -91,8 +89,6 @@ npm install occ-tools --save
 
 const IndexPage = () => (
   <Layout type="full">
-    <SEO title="Home" />
-
     <HomeSection kind="primary">
       <SectionContainer alignment="center" content="center">
         <HomeH1>

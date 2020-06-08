@@ -2,7 +2,8 @@ module.exports = {
   pathPrefix: `/occ-tools`,
   siteMetadata: {
     title: `OCC Tools`,
-    description: "",
+    description:
+      "Object Edge tools for development tasks automation on Oracle Commerce Cloud platform.",
     author: "Object Edge",
     sidebarMenu: [
       { title: "Introduction", slug: "/docs/" },

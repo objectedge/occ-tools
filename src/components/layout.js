@@ -1,9 +1,9 @@
 import React, { useState } from "react"
 import PropTypes from "prop-types"
-import WebFont from "webfontloader"
 import { useStaticQuery, graphql } from "gatsby"
 import styled, { createGlobalStyle, ThemeProvider } from "styled-components"
 
+import SEO from "../components/seo"
 import { backgroundColor, foregroundColor } from "./theme"
 import Header from "./header"
 import Sidebar from "./sidebar"
@@ -60,24 +60,16 @@ const GlobalStyles = createGlobalStyle`
 `
 const Main = styled.main`
   padding-top: ${props => (props.sidebarLayout ? "4rem" : "5rem")};
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-bottom: 2rem;
 
   @media (min-width: 768px) {
-    padding-left: ${props => (props.sidebarLayout ? "19rem" : "0")};
-    padding-right: ${props => (props.sidebarLayout ? "1rem" : "0")};
-    padding-bottom: ${props => (props.sidebarLayout ? "1rem" : "0")};
+    padding-left: ${props => (props.sidebarLayout ? "19rem" : "1rem")};
   }
 `
 
 const Layout = ({ type, children }) => {
-  WebFont.load({
-    google: {
-      families: [
-        "Fira Code:400,400italic,600,600italic,700,700italic",
-        "Open Sans:300,300italic,400,400italic,600,600italic,700,700italic,800,800italic",
-        "Roboto:100,100italic,300,300italic,regular,italic,500,500italic,700,700italic,900,900italic",
-      ],
-    },
-  })
   const data = useStaticQuery(graphql`
     query SiteTitleQuery {
       site {
@@ -104,6 +96,7 @@ const Layout = ({ type, children }) => {
 
   return (
     <ThemeProvider theme={{ mode: "light" }}>
+      <SEO />
       <GlobalStyles />
       <Header
         siteTitle={data.site.siteMetadata.title}

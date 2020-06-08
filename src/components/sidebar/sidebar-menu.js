@@ -1,6 +1,5 @@
 import React, { useState } from "react"
 import styled from "styled-components"
-import classNames from "classnames"
 import { Link } from "gatsby"
 import { AiOutlineRight, AiOutlineDown } from "react-icons/ai"
 
@@ -82,7 +81,13 @@ const SidebarSubmenuToggle = styled.a`
 `
 
 const SidebarMenuItem = ({ item }) => {
-  const [submenuOpen, setSubmenuOpen] = useState(false)
+  let openedByDefault = false
+
+  if (typeof window !== "undefined") {
+    openedByDefault = window.location.pathname.startsWith(item.slug)
+  }
+
+  const [submenuOpen, setSubmenuOpen] = useState(openedByDefault)
 
   function toggleSubmenu(e) {
     e.preventDefault()
@@ -90,9 +95,7 @@ const SidebarMenuItem = ({ item }) => {
   }
 
   return (
-    <SidebarMenuItemContainer
-      className={classNames({ "with-children": !!item.children })}
-    >
+    <SidebarMenuItemContainer className={item.children && "with-children"}>
       <SidebarMenuLink to={item.slug}>{item.title}</SidebarMenuLink>
       {item.children && (
         <>

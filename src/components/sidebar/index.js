@@ -1,6 +1,5 @@
 import React from "react"
 import styled from "styled-components"
-import classNames from "classnames"
 
 import SidebarMenu from "./sidebar-menu"
 import { sidebarBackgroundColor } from "./styles"
@@ -36,7 +35,7 @@ const SidebarContainer = styled.div`
 const SidebarNavigation = styled.nav``
 
 const Sidebar = ({ sidebarMenu = [], opened }) => (
-  <SidebarContainer className={classNames({ opened })}>
+  <SidebarContainer className={opened && "opened"}>
     <SidebarNavigation>
       <SidebarTitle>Documentation</SidebarTitle>
       <SidebarMenu menu={sidebarMenu} className="menu" />

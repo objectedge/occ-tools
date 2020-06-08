@@ -25,7 +25,7 @@ const SidebarMenuItemContainer = styled.li`
 
 const SidebarLink = ({ className, ...props }) => {
   function resolveClassNames({ isCurrent, isPartiallyCurrent, href }) {
-    if (isCurrent || (isPartiallyCurrent && href !== "/docs/")) {
+    if (isCurrent || (isPartiallyCurrent && href !== withPrefix("/docs/"))) {
       return { className: `${className} active` }
     } else {
       return { className }

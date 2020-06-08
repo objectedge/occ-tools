@@ -128,9 +128,9 @@ const Header = ({ slim = true, sticky = true, siteTitle, ...props }) => {
       </GithubProjectLink>
       {slim && (
         <MenuToggler onClick={onMenuTogglerClick}>
-        <AiOutlineMenu />
-      </MenuToggler>)
-      }
+          <AiOutlineMenu />
+        </MenuToggler>
+      )}
     </HeaderBar>
   )
 }

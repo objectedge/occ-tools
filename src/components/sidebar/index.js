@@ -13,7 +13,6 @@ const SidebarTitle = styled.h2`
   font-size: 0.8rem;
   text-transform: uppercase;
   font-weight: 400;
-
 `
 
 const SidebarContainer = styled.div`
@@ -24,7 +23,7 @@ const SidebarContainer = styled.div`
   position: fixed;
   top: 0;
   display: none;
-  
+
   &.opened {
     display: block;
   }

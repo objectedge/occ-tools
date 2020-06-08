@@ -82,9 +82,7 @@ const SidebarSubmenuToggle = styled.a`
 `
 
 const SidebarMenuItem = ({ item }) => {
-  const [submenuOpen, setSubmenuOpen] = useState(
-    window.location.pathname.startsWith(item.slug)
-  )
+  const [submenuOpen, setSubmenuOpen] = useState(false)
 
   function toggleSubmenu(e) {
     e.preventDefault()

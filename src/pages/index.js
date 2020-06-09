@@ -81,10 +81,10 @@ const HomeParagraph = styled.p`
 
 const installationCode = `
 # Install it globally
-npm install occ-tools -g
+$ npm install occ-tools -g
 
 # Or add it as a project dependency
-npm install occ-tools --save
+$ npm install occ-tools --save
 `
 
 const IndexPage = () => (

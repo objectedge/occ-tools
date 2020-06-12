@@ -62,7 +62,7 @@ occ-tools $ exit
 $
 ```
 
-For more commands and more details, please check the [User Guide](http://objectedge.github.io/occ-tools/user-guide).
+For more commands and more details, please check the [User Guide](http://objectedge.github.io/occ-tools/docs/user-guide/).
 
 ## Resources
 

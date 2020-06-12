@@ -12,7 +12,7 @@ perform certain development tasks like:
 - Uploading/download widgets
 - Upload/download themes
 
-And much more! Please check the [User Guide](http://objectedge.github.io/occ-tools/user-guide) for the complete list.
+And much more! Please check the [User Guide](http://objectedge.github.io/occ-tools/docs/user-guide/) for the complete list.
 
 ## Installation
 
@@ -66,8 +66,8 @@ For more commands and more details, please check the [User Guide](http://objecte
 
 ## Resources
 
-- [Getting Started](http://objectedge.github.io/occ-tools/getting-started)
-- [User Guide](http://objectedge.github.io/occ-tools/user-guide)
+- [Getting Started](http://objectedge.github.io/occ-tools/docs/getting-started/)
+- [User Guide](http://objectedge.github.io/occ-tools/docs/user-guide/)
 
 ## License
 

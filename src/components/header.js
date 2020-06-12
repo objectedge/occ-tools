@@ -1,12 +1,18 @@
 import PropTypes from "prop-types"
 import React from "react"
 import styled from "styled-components"
+import theme from "styled-theming"
 import { Link } from "gatsby"
 import { FaGithub } from "react-icons/fa"
 import { AiOutlineMenu } from "react-icons/ai"
 
 import OeLogo from "./oe-logo"
 import { colors } from "./theme"
+
+const headerBackgroundColor = theme("mode", {
+  light: "#fff",
+  dark: "#eee",
+})
 
 const HeaderBar = styled.header`
   display: flex;
@@ -16,6 +22,7 @@ const HeaderBar = styled.header`
   padding: 0 1rem;
   border-bottom: 1px solid #e0e0e0;
   position: ${props => (props.sticky ? "fixed" : "absolute")};
+  background-color: ${headerBackgroundColor};
 `
 
 HeaderBar.propTypes = {

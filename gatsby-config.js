@@ -18,7 +18,9 @@ module.exports = {
           },
         ],
       },
-      { title: "Developer Guide", slug: "/docs/developer-guide/" },
+      { title: "Developer Guide", slug: "/docs/developer-guide/", children: [
+        { title: "Project Structure", slug: "/docs/developer-guide/project-structure/" }
+      ] },
       { title: "API", slug: "/docs/api/" },
     ],
   },

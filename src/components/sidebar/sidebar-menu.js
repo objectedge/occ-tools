@@ -21,6 +21,7 @@ const SidebarMenuContainer = styled.ul`
 
 const SidebarMenuItemContainer = styled.li`
   position: relative;
+  margin: 0;
 `
 
 const SidebarLink = ({ className, ...props }) => {

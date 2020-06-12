@@ -16,10 +16,10 @@ const Pre = styled.pre`
   font-family: "Fira Code", monospace;
   font-size: 0.9rem;
   text-align: left;
-  margin: 0;
   padding: 1.5rem;
   overflow: hidden;
   text-rendering: optmizeLegibility;
+  margin-bottom: 1rem;
 `
 
 const Line = styled.div`

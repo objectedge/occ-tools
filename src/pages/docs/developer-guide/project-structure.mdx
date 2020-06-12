@@ -1,0 +1,65 @@
+---
+title: Project Structure
+---
+
+import CodeBlock from "../../../components/ui-kit/code-block.js"
+import AlertBox from "../../../components/ui-kit/alert-box.js"
+
+# Project Structure
+
+The OCC Tools project is structured in the following way:
+
+<CodeBlock codeBlock={
+`
+.
+├── bin
+│   └── occ-tools.js
+├── lib
+│   ├── api
+│   │   ├── design-studio
+│   │   ├── email-templates.js
+│   │   ├── extension-server
+│   │   ├── media
+│   │   └── occ-client
+│   ├── cli
+│   │   ├── cache.js
+│   │   ├── command
+│   │   ├── execution-context.js
+│   │   ├── index.js
+│   │   ├── key-map
+│   │   ├── occ.js
+│   │   ├── project
+│   │   ├── settings.js
+│   │   └── ui
+│   │       ├── input
+│   │       ├── output
+│   │       └── theme.js
+│   ├── commands
+│   │   └── index.js
+│   └── utils
+`
+} language="text" />
+
+<AlertBox>
+  Although there are much more files and folders on the project, only the most relevant ones will be discussed.
+</AlertBox>
+
+Let's start with the two outmost folders, `bin` and `lib`. The `bin` folder contains only one file, `occ-tools.js` and this is the entry point for the CLI application. The `lib` folder is where the source files are located, and it's divided into 4 main folders:
+
+* `api` is where all OCC Tools APIs are placed.
+* `cli` contains the APIs that form the base for the CLI application.
+* `commands` is the folder where it contains all the OCC Tools commands.
+* `utils` contains some tiny helpers that are used by these 3 folders above.
+
+The `api` folder can be split into two main sections, the APIs to interact with the OCC environment (Design Studio, extension server, OCC Media, etc), and the OCC Client, located on the `occ-client` folder.
+
+The `cli` folder contains the following files/folders:
+
+- `cache.js` provides APIs that performs caching using memory on the file system.
+- `command` contains the files that composes the Command API.
+- `execution-context.js` provides functionality on top of execution context.
+- `key-map` contains APIs for setting keybindings on the CLI app.
+- `occ.js` contains the API that the commands use for getting an OCC Client instance. The API takes care of getting the correct OCC client instance considering the current execution context and also asks for the user credentials if there's no one set yet.
+- `settings.js` has the API for defining and fetching application settings.
+- `ui` is the folder where the input/output UI elements are defined. Also the `theme.js` file contains the color definitions for the default application theme.
+- `index.js` is the entry point in the `lib` folder for running the CLI application. This gets called by the `./bin/occ-tools.js` main file.

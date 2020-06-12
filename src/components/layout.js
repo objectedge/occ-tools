@@ -4,7 +4,7 @@ import { useStaticQuery, graphql } from "gatsby"
 import styled, { createGlobalStyle, ThemeProvider } from "styled-components"
 
 import SEO from "../components/seo"
-import { backgroundColor, foregroundColor } from "./theme"
+import { backgroundColor, foregroundColor, colorPallete } from "./theme"
 import Header from "./header"
 import Sidebar from "./sidebar"
 
@@ -52,10 +52,22 @@ const GlobalStyles = createGlobalStyle`
     margin-top: 0;
     margin-bottom: 1rem;
   }
+  
+  code {
+    font-family: "Fira Code", monospace;
+    font-size: 0.9rem;
+    color: ${colorPallete.primary};
+    background-color: #eee;
+    padding: 0 5px;
+  }
 
   a {
     text-decoration: none;
     color: ${foregroundColor};
+  }
+
+  li {
+    margin-bottom: 1rem;
   }
 `
 const Main = styled.main`

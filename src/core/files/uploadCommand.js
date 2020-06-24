@@ -73,8 +73,7 @@ function initFileUpload(destination, settings, callback) {
     method: 'put',
     body: {
       filename: destination,
-      segments: 1,
-      uploadType: settings.folder
+      segments: 1
     }
   };
 

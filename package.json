@@ -6,6 +6,9 @@
   "license": "MIT",
   "repository": "github.com/intelimen/occ-tools",
   "private": true,
+  "bin": {
+    "occ-tools": "./index.js"
+  },
   "author": {
     "name": "Douglas Hipolito",
     "email": "douglas.hipolito@objectedge.com",

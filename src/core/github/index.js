@@ -1,6 +1,7 @@
 'use strict';
 
-const github = require('@octokit/rest')({
+const { Octokit } = require("@octokit/rest");
+const github = new Octokit({
   timeout: 5000,
   debug: true
 });

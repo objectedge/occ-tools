@@ -1,11 +1,14 @@
 {
   "name": "occ-tools-cli",
   "productName": "OCC-TOOLS-CLI",
-  "version": "2.0.0-beta.25",
+  "version": "2.0.0-beta.28",
   "description": "Object Edge tools for tasks automation on Oracle Cloud Commerce platform.",
   "license": "MIT",
   "repository": "github.com/intelimen/occ-tools",
   "private": true,
+  "bin": {
+    "occ-tools": "./index.js"
+  },
   "author": {
     "name": "Douglas Hipolito",
     "email": "douglas.hipolito@objectedge.com",
@@ -19,7 +22,7 @@
     "@apidevtools/swagger-parser": "^9.0.1",
     "@bugsnag/js": "^6.0.0",
     "@httptoolkit/browser-launcher": "^1.5.1",
-    "@octokit/rest": "15.9.4",
+    "@octokit/rest": "18.0.0",
     "archiver": "2.1.1",
     "array-sort": "^1.0.0",
     "async": "^1.5.2",
@@ -53,6 +56,7 @@
     "hoxy": "^3.2.0",
     "html-loader": "^0.5.5",
     "http-parser-js": "^0.5.2",
+    "is-wsl": "^2.2.0",
     "isomorphic-git": "^0.51.7",
     "jsesc": "^2.5.1",
     "json5": "^2.1.2",

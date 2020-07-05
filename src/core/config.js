@@ -31,6 +31,7 @@ if(useMFALogin) {
 
 var tempRootFolder = path.join(os.tmpdir(), 'occ-tools-data');
 var mocksDirName = 'mocks';
+var occToolsUserCommandsPath = configsData.occToolsUserCommandsPath || path.join(configsData.projects.current.path, 'occ-tools-commands');
 
 var instanceId = baseUrl.match(/ccadmin-(.*?)\./)[1];
 var instanceDefinitionsRootPath = path.join(configsData.projects.current.path, '.oracle-resources');
@@ -137,7 +138,7 @@ var _configDescriptor = {
     details: currentEnvironmentDetails
   },
   occToolsPath: path.join(__dirname, '..'),
-  occToolsUserCommandsPath: path.join(configsDir, 'user-commands'),
+  occToolsUserCommandsPath: occToolsUserCommandsPath,
   endpoints: {
     baseUrl: baseUrl,
     admin: baseUrl + '/ccadmin/v1/',

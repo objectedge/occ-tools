@@ -103,6 +103,20 @@ Configs.prototype.setProjectsBasePath = function (basePath, cb) {
   });
 };
 
+Configs.prototype.setOccToolsCommandsPath = function (occToolsCommandsPath, cb) {
+  var self = this;
+
+  self.ensureMainConfigsFile(function(error, configsJson) {
+    if(error) {
+      cb(error);
+      return;
+    }
+
+    configsJson.occToolsUserCommandsPath = occToolsCommandsPath;
+    updateConfigs(configsJson, 'OCC Tools Commands Path', cb);
+  });
+};
+
 Configs.prototype.setProjectMFALogin = function (useMFALogin, cb) {
   var self = this;
 

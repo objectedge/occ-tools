@@ -10,8 +10,7 @@ function initFileUpload(srcPath, destPath, callback) {
     method: 'put',
     body: {
       filename: destPath,
-      segments: 1,
-      uploadType: 'general'
+      segments: 1      
     }
   };
   this._occ.request(opts, function(err, data) {

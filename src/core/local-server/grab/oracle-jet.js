@@ -1,4 +1,5 @@
-const octokit = require('@octokit/rest')();
+const { Octokit } = require("@octokit/rest");
+const octokit = new Octokit;
 const winston = require('winston');
 const request = require('request');
 const extract = require('extract-zip');
@@ -21,7 +22,7 @@ class OracleJet {
     return new Promise((resolve, reject) => {
       const findRelease = async (page = 1) => {
         try {
-          const result = await octokit.repos.getReleases({
+          const result = await octokit.repos.listReleases({
             owner: 'oracle',
             repo: 'oraclejet',
             page,
@@ -103,7 +104,7 @@ class OracleJet {
 
         request.get({
           headers: {
-            'user-agent': 'octokit/rest.js v1.2.3'
+            'user-agent': 'octokit-rest.js/18.0.0'
           },
           url: downloadUrl
         }).on('response', (response) => {

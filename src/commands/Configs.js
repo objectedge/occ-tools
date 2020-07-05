@@ -404,6 +404,40 @@ Configs.prototype.do_set_env.help = (
   '{{options}}'
 );
 
+Configs.prototype.do_set_user_commands_path = function(subcmd, opts, args, callback) {
+  var occToolsConfigs = new _Configs();
+
+  var schema = setPromptSchema({
+    properties: {
+      'user-commands-path': {
+        required: true,
+        description: 'User Commands Path'
+      }
+    }
+  });
+
+  prompt.start();
+
+  prompt.get(schema, function (error, result) {
+    if(error) {
+      if (error.message === 'canceled') {
+        return callback('\nOperation canceled');
+      }else {
+        return callback(error.message);
+      }
+    }
+
+    occToolsConfigs.setOccToolsCommandsPath(result['user-commands-path'], callback);
+  });
+};
+
+Configs.prototype.do_set_user_commands_path.help = (
+  'Set the path for the occ-tools user commands path\n\n' +
+  'Usage:\n' +
+  '     {{name}} {{cmd}} [options] \n\n' +
+  '{{options}}'
+);
+
 Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback) {
   var occToolsConfigs = new _Configs();
   var schema = setPromptSchema({

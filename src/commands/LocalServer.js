@@ -107,19 +107,22 @@ LocalServer.prototype.do_grab_all.help = (
 );
 
 LocalServer.prototype.do_run = function (subcmd, opts, args, callback) {
-  login(async error => {
-    if (error) {
-      return callback(error);
-    }
+  winston.info('This command is still in development...');
+  return callback();
 
-    try {
-      const instance = await localServerInstance('admin');
-      winston.info(await instance.runLocalServer({ ...opts }));
-      callback();
-    } catch(error) {
-      callback(error);
-    }
-  });
+  // login(async error => {
+  //   if (error) {
+  //     return callback(error);
+  //   }
+
+  //   try {
+  //     const instance = await localServerInstance('admin');
+  //     winston.info(await instance.runLocalServer({ ...opts }));
+  //     callback();
+  //   } catch(error) {
+  //     callback(error);
+  //   }
+  // });
 }
 
 LocalServer.prototype.do_run.options = [

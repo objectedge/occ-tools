@@ -54,27 +54,27 @@ module.exports = function (done) {
         return;
       }
 
-      var commandDefinitionClass = function () {
+      function CommandDefinitionClass() {
         Cmdln.call(this, {
           name: mainCommandName,
           desc: modulePackage.description + ' \x1b[32m[CUSTOM]\x1b[0m'
         });
       };
-      util.inherits(commandDefinitionClass, Cmdln);
+      util.inherits(CommandDefinitionClass, Cmdln);
 
       Object.keys(commandDefinitionIndex).forEach(function (commandName) {
-        commandDefinitionClass.prototype['do_' + commandName] = commandDefinitionIndex[commandName].action;
+        CommandDefinitionClass.prototype['do_' + commandName] = commandDefinitionIndex[commandName].action;
 
         if(commandDefinitionIndex[commandName].help) {
-          commandDefinitionClass.prototype['do_' + commandName].help = commandDefinitionIndex[commandName].help;
+          CommandDefinitionClass.prototype['do_' + commandName].help = commandDefinitionIndex[commandName].help.trim();
         }
 
         if(commandDefinitionIndex[commandName].options) {
-          commandDefinitionClass.prototype['do_' + commandName].options = commandDefinitionIndex[commandName].options;
+          CommandDefinitionClass.prototype['do_' + commandName].options = commandDefinitionIndex[commandName].options;
         }
       });
 
-      OccTools.prototype['do_' + mainCommandName.toLowerCase()] = commandDefinitionClass;
+      OccTools.prototype['do_' + mainCommandName.toLowerCase()] = CommandDefinitionClass;
     }
 
     function loadUserCommands(done) {

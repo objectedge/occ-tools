@@ -26,9 +26,9 @@ var UserCommands = require('./UserCommands.js');
 var Compile = require('./Compile.js');
 var Configs = require('./Configs.js');
 var Restart = require('./Restart.js');
-
-var OCC = require('../core/occ');
-var DeployCmd = require('../core/deploy');
+var Deploy = require('./Deploy.js');
+var Instance = require('./Instance.js');
+var LocalServer = require('./LocalServer.js');
 var Environment = require('../core/env');
 
 function OccTools(logger) {
@@ -190,55 +190,9 @@ OccTools.prototype.do_force_update.help = (
   'Forces the update. It will set occ-tools to remove the 24hs verification temporarily.\n\n'
 );
 
-OccTools.prototype.do_deploy = function(subcmd, opts, args, callback) {
-  var file = args[0];
-
-  if (!file) {
-    return callback('Deploy file not specified not specified.');
-  }
-
-  try {
-    fs.lstatSync(file);
-  } catch (e) {
-    return callback('Deploy file does not exists.');
-  }
-
-  var deployInstructions;
-  try{
-    deployInstructions =  JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch (e) {
-    return callback('Error parsing the file.');
-  }
-
-  var login = require('../core/auth/loginApis');
-  login(function(error) {
-
-    if (error) {
-      return callback(error);
-    }
-
-    var deploy = new DeployCmd('admin');
-
-    deploy.on('complete', function(msg) {
-      winston.info(msg);
-      return callback();
-    });
-
-    deploy.on('error', function(err) {
-      return callback(err);
-    });
-
-    deploy.run(deployInstructions);
-  });
-};
-
-
-OccTools.prototype.do_deploy.help = (
-  'Execute a deploy script.\n\n' +
-  'Usage:\n' +
-  '     {{name}} {{cmd}} <deploy-instructions-file>'
-);
-
+OccTools.prototype.do_instance = Instance;
+OccTools.prototype.do_local_server = LocalServer;
+OccTools.prototype.do_deploy = Deploy;
 OccTools.prototype.do_download = Download;
 OccTools.prototype.do_upload = Upload;
 OccTools.prototype.do_generate = Generator;

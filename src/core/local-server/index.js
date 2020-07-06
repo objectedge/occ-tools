@@ -3,10 +3,10 @@ const path = require('path');
 const OCC = require('../occ');
 const Auth = require('../auth');
 const libraries = require('./grab/libraries');
-const apiSchema = require('./grab/api-schema');
-const pagesResponse = require('./grab/pages-response');
-const server = require('./server');
-const models = require('./database/models');
+// const apiSchema = require('./grab/api-schema');
+// const pagesResponse = require('./grab/pages-response');
+// const server = require('./server');
+// const models = require('./database/models');
 const config = require('../config');
 
 class LocalServer {
@@ -35,37 +35,40 @@ class LocalServer {
 
   grabApiSchema(options) {
     return new Promise((resolve, reject) => {
-      apiSchema.call(this, 'grab', options, error => {
-        if(error) {
-          return reject(error);
-        }
+      resolve('Feature in development');
+      // apiSchema.call(this, 'grab', options, error => {
+      //   if(error) {
+      //     return reject(error);
+      //   }
 
-        resolve('Grab Api Schema Completed!');
-      });
+      //   resolve('Grab Api Schema Completed!');
+      // });
     });
   }
 
   grabPagesResponse(options) {
     return new Promise((resolve, reject) => {
-      pagesResponse.call(this, options.type, options, error => {
-        if(error) {
-          return reject(error);
-        }
+      resolve('Feature in development');
+      // pagesResponse.call(this, options.type, options, error => {
+      //   if(error) {
+      //     return reject(error);
+      //   }
 
-        resolve('Grab Pages Response Completed!');
-      });
+      //   resolve('Grab Pages Response Completed!');
+      // });
     });
   }
 
   runLocalServer(options) {
     return new Promise((resolve, reject) => {
-      server.call(this, 'run', options, error => {
-        if(error) {
-          return reject(error);
-        }
+      resolve('Feature in development');
+      // server.call(this, 'run', options, error => {
+      //   if(error) {
+      //     return reject(error);
+      //   }
 
-        resolve('Server Closed!');
-      });
+      //   resolve('Server Closed!');
+      // });
     });
   }
 }
@@ -73,21 +76,21 @@ class LocalServer {
 module.exports = (environment, options = {}) => {
   return new Promise(async (resolve, reject) => {
     try {
-      if(!fs.existsSync(config.localServer.database.development.storage)) {
-        await fs.copy(path.join(__dirname, 'database', 'schema', 'db.development.sqlite'), config.localServer.database.development.storage);
-      }
+      // if(!fs.existsSync(config.localServer.database.development.storage)) {
+      //   await fs.copy(path.join(__dirname, 'database', 'schema', 'db.development.sqlite'), config.localServer.database.development.storage);
+      // }
 
-      const [ OccEnv ] = await models.OccEnv.findOrCreate({
-        where: { name: config.instanceId },
-        defaults: {
-          name: config.instanceId,
-          remoteUrl: config.endpoints.dns,
-          localUrl: config.endpoints.local
-        },
-        raw: true
-      });
+      // const [ OccEnv ] = await models.OccEnv.findOrCreate({
+      //   where: { name: config.instanceId },
+      //   defaults: {
+      //     name: config.instanceId,
+      //     remoteUrl: config.endpoints.dns,
+      //     localUrl: config.endpoints.local
+      //   },
+      //   raw: true
+      // });
 
-      options.occEnv = OccEnv;
+      // options.occEnv = OccEnv;
       resolve(new LocalServer(environment, options));
     } catch(error) {
       reject(error);

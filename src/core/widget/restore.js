@@ -124,7 +124,7 @@ var placeInstances = function (widgetType, backup, occ, config, instances, callb
       occ.request(request, function (error, response) {
         if (error || response.errorCode) {
           // Dont block the entire process because of one error.
-          console.log(response);
+          winston.error(response);
           cb();
         } else {
           winston.info('Widgets were placed on %s layout', structureId);

@@ -130,15 +130,21 @@ function uploadLess(widgetInfo, callback) {
               source: fileData
             }
           };
+          winston.info('Uploading LESS for instance %s', instance.id);
+
           self._occ.request(opts, function(err, data) {
             if (err){
-              return callback(err);
+              winston.error(err);
+              return callback();
             }
             if (data && data.errorCode) {
-              return callback(util.format('%s: %s - %s', widgetInfo.item.widgetType, data.errorCode, data.message));
+              winston.error(data);
+              return callback();
             }
             if (data && parseInt(data.status) >= 400) {
-              return callback(util.format('%s: %s - %s', widgetInfo.item.widgetType, data.status, data.message));
+              winston.error(data);
+              return callback();
+              // return callback(util.format('%s: %s - %s', widgetInfo.item.widgetType, data.status, data.message));
             }
             winston.info('Uploaded LESS for instance %s', instance.id);
             return callback();

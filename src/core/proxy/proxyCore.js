@@ -411,7 +411,7 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
 OCCProxy.prototype.setWidgetsTranspiler = function (widgetsList, done) {
   var proxyInstance = this;
   var es6WidgetsList = widgetsList.filter(function (widgetObject) {
-    return widgetObject.widgetMeta && widgetObject.widgetMeta.ES6;
+    return widgetObject.widgetMeta && widgetObject.widgetMeta.ES6 && widgetObject.active && !widgetObject.bundlerStarted;
   });
   var totalES6Widgets = es6WidgetsList.length;
 
@@ -441,6 +441,7 @@ OCCProxy.prototype.setWidgetsTranspiler = function (widgetsList, done) {
     winston.info('[bundler:compile:es6] Setting Webpack watcher for ' + widgetObject.widgetName);
 
     bundler.on('complete', function(stats) {
+      widgetObject.bundlerStarted = true;
       winston.info('\n\n');
       winston.info('[bundler:compile:es6] Changes ----- %s ----- \n', new Date());
       winston.info('[bundler:compile:es6] %s', stats.toString({
@@ -481,17 +482,23 @@ OCCProxy.prototype.getWidgetOptions = function (options, done) {
 
   var processTranspileJSs = function () {
     var widgetJSPath = path.join(config.dir.project_root, '.occ-transpiled', 'widgets', options.widgetName);
+    var es6Files = [
+      path.join(widgetJSPath, options.widgetName + '.js'),
+      path.join(widgetJSPath, options.widgetName + '.min.js'),
+    ];
 
-    walk(widgetJSPath).on('file', function (item) {
-      options.widgetFiles.js.push(item);
-    }).on('end', function () {
-      done(options);
+    es6Files.forEach(function (filePath) {
+      fs.ensureFileSync(filePath);
+      options.widgetFiles.js.push(filePath);
     });
+
+    done(options);
   };
 
   //Populate all templates and js files
   walk(path.join(options.widgetPath)).on('file', function (item) {
     const dash = path.sep;
+
     if(item.indexOf(`${dash}js${dash}`) > -1 && !isES6) {
 
       //Ignore SRC folder for now

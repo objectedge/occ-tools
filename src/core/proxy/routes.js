@@ -697,9 +697,12 @@ routes.panel = function() {
       if(widget.widgetName === widgetData.widgetName) {
         widget.active = widgetData.active;
         forceLessRender = true;
-
         fn('changed');
       }
+    });
+
+    proxyInstance.proxyServer.setWidgetsTranspiler(proxyInstance.widgetsList, function () {
+      proxyInstance.proxyServer.log('Widgets Transpiling Finished');
     });
   });
 

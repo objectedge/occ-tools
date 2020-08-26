@@ -2,6 +2,10 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.29] - 2020-08-26]
+### Fixed
+- Proxy Slowness
+
 ## [2.0.0-beta.25] - 2019-12-10]
 ### Added
 - Remove the sse-name parameter from the download sse logs command.

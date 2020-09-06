@@ -69,6 +69,7 @@ routes.mainHtmlPage = function () {
       var additionalContextInfoScript = fs.readFileSync(path.join(__dirname, 'static_replaces', 'additional-context-info.js'), 'utf8');
       additionalContextInfoScript = additionalContextInfoScript.replace(/#OCC_TOOLS_VERSION/g, config.occToolsVersion);
       additionalContextInfoScript = additionalContextInfoScript.replace(/#OCC_VERSION/g, resp.headers['oraclecommercecloud-version']);
+      additionalContextInfoScript = additionalContextInfoScript.replace(/#IP/g, config.currentIP);
       additionalContextInfoScript = additionalContextInfoScript.replace(/#OCC_TOOLS_PATH/g, config.occToolsPath);
       additionalContextInfoScript = additionalContextInfoScript.replace(/#OCC_TOOLS_PROXY_ENV/g, proxyInstance.options.environment.current);
 
@@ -450,6 +451,7 @@ routes.panel = function() {
 
       try {
         template = fs.readFileSync(__dirname + '/panel/index.html', { encoding: 'utf8' });
+        template = template.replace(/#IP/g, config.currentIP);
       } catch(e) {
         winston.error(e);
       }

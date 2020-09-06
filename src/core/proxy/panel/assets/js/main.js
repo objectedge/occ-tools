@@ -1,4 +1,4 @@
-var ioDomain = 'https://127.0.0.1:8005';
+var ioDomain = 'https://' + window.currentIP + ':8005';
 
 requirejs.config({
   baseUrl: '/occ-proxy-panel/assets',
@@ -37,7 +37,7 @@ define(['domReady', 'knockout', 'view-model', 'io'], function(domReady, ko, view
   domReady(function () {
     occProxyIO.emit('panel-get-proxy-data', function (data) {
       ko.components.register('occ-proxy-panel', {
-          viewModel: viewModel.bind(null, 
+          viewModel: viewModel.bind(null,
             data.widgets,
             data.cacheList,
             data.mocksList,
@@ -46,7 +46,7 @@ define(['domReady', 'knockout', 'view-model', 'io'], function(domReady, ko, view
           ),
           template: { require: 'text!templates/panel.html' }
       });
-  
+
       ko.applyBindings();
     });
   });

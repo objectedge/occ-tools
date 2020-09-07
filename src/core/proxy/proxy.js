@@ -106,15 +106,11 @@ Proxy.prototype.initProxyRouting = function () {
     route.call(proxyInstance);
   });
 
-  if(typeof proxyInstance.options.noBrowser === 'undefined' || proxyInstance.options.noBrowser === false) {
-    proxyInstance.openBrowser();
-  }
+  proxyInstance.openBrowser();
 };
 
 Proxy.prototype.openBrowser = function () {
   var proxyInstance = this;
-
-  proxyInstance.proxyServer.log('\n\nstarting a browser for development..\n\n');
 
   var launcher = new BrowserLauncher({
     flags: proxyInstance.options.browser.flags,
@@ -126,15 +122,31 @@ Proxy.prototype.openBrowser = function () {
     browserForProxy: true
   });
 
-  launcher.on('complete', function(message) {
-    proxyInstance.proxyServer.log(message);
-  });
+  if(typeof proxyInstance.options.noBrowser === 'undefined' || proxyInstance.options.noBrowser === false) {
+    proxyInstance.proxyServer.log('\n\nstarting a browser for development..\n\n');
 
-  launcher.on('error', function(err) {
-    proxyInstance.proxyServer.log('[browser:error]', err);
-  });
+    launcher.on('complete', function(message) {
+      proxyInstance.proxyServer.log(message);
+    });
+  
+    launcher.on('error', function(err) {
+      proxyInstance.proxyServer.log('[browser:error]', err);
+    });
+  
+    launcher.launch(); 
+  } else {
+    var currentEnvironment = config.environments.find(function (environment) {
+      return environment.name === proxyInstance.options.environment.current;
+    });
 
-  launcher.launch();
+    launcher.generatePACFile(currentEnvironment.url, function (error) {
+      if(error) {
+        proxyInstance.proxyServer.log('[browser:error]', err);
+      } else {
+        proxyInstance.proxyServer.log('Proxy Pac updated');
+      }
+    });
+  }
 };
 
 Proxy.prototype.loadWidgets = function (done, options) {

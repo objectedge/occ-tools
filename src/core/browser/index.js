@@ -132,6 +132,8 @@ function getConfigs(browsers, callback) {
   });
 }
 
+Browser.prototype.generatePACFile = generatePACFile;
+
 /**
  * Prints the current environment.
  */

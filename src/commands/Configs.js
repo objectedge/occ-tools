@@ -428,6 +428,11 @@ Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback
         description: 'OCC environment password',
         required: true,
         message: 'Please type a your OCC enviroment password'
+      },
+      mfaSecret: {
+        description: 'OCC environment MFA secret',
+        required: true,
+        message: 'Please type a your OCC enviroment MFA secret'
       }
     }
   });
@@ -442,13 +447,14 @@ Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback
         return callback(error.message);
       }
     }
-
+    
     occToolsConfigs.setEnvCredentials({
       projectName: result['project-name'],
       env: result.env,
       force: true,
       username: result.username,
-      password: result.password
+      password: result.password,
+      mfaSecret: result.mfaSecret
     }, callback);
   });
 };

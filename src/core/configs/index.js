@@ -281,10 +281,12 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
     var updateCredentials = function(credentialsObject, changeCurrent) {
       envCredentials.username = credentialsObject.username;
       envCredentials.password = credentialsObject.password;
+      envCredentials.mfaSecret = credentialsObject.mfaSecret;
 
       if(changeCurrent) {
         configsJson.projects.current.credentials.username = credentialsObject.username;
         configsJson.projects.current.credentials.password = credentialsObject.password;
+        configsJson.projects.current.credentials.mfaSecret = credentialsObject.mfaSecret;
       }
 
       updateConfigs(configsJson, 'Environment credentials', cb);
@@ -304,6 +306,11 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
             description: 'OCC environment password',
             required: true,
             message: 'Please type a your OCC environdddment password'
+          },
+          mfaSecret: {
+            description: 'OCC environment MFA secret',
+            required: true,
+            message: 'Please type a your OCC enviroment MFA secret'
           }
         }
       });
@@ -327,7 +334,8 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
     if(!options.force && envCredentials.username && envCredentials.password) {
       updateCredentials({
         username: envCredentials.username,
-        password: envCredentials.password
+        password: envCredentials.password,
+        mfaSecret: envCredentials.mfaSecret
       }, true);
       return;
     }
@@ -336,7 +344,8 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
     if(options.force) {
       updateCredentials({
         username: options.username,
-        password: options.password
+        password: options.password,
+        mfaSecret: options.mfaSecret
       }, true);
       return;
     }

@@ -14,13 +14,15 @@ var currentIP = occToolsConfigsCore.getCurrentIP();
 var baseUrl = configsData.projects.current.url;
 var username = configsData.projects.current.credentials.username;
 var password = configsData.projects.current.credentials.password;
+var mfaSecret = configsData.projects.current.credentials.mfaSecret;
 var storefrontDir = configsData.projects['storefront-dir'];
 
 var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : true;
 var loginCredentials = {
   grant_type: 'password',
   username: username,
-  password: password
+  password: password,
+  mfaSecret: mfaSecret
 };
 
 if(useMFALogin) {

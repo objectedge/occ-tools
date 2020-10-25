@@ -100,7 +100,7 @@ function jsBundle(options, done) {
   var bundler = webpack(webpackConfigs);
 
   bundler.run(function (error, stats) {
-    winston.debug('[bundler:compile] %s', stats.toString({
+    winston.info('[bundler:compile] %s', stats.toString({
       chunks: true, // Makes the build much quieter
       colors: true
     }));

@@ -2,6 +2,10 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.32] - 2020-10-225]
+### Added
+- Logs for app level bundler
+
 ## [2.0.0-beta.29] - 2020-08-26]
 ### Fixed
 - Proxy Slowness

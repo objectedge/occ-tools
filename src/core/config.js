@@ -33,7 +33,18 @@ var tempRootFolder = path.join(os.tmpdir(), 'occ-tools-data');
 var mocksDirName = 'mocks';
 var occToolsUserCommandsPath = configsData.occToolsUserCommandsPath || path.join(configsData.projects.current.path, 'occ-tools-commands');
 
-var instanceId = baseUrl.match(/ccadmin-(.*?)\./)[1];
+var instanceId = baseUrl.match(/ccadmin-(.*?)\./);
+
+if(!instanceId) {
+  instanceId = baseUrl.match(/https?:\/\/(.*?)-admin/);
+}
+
+if(instanceId) {
+  instanceId = instanceId[1];
+} else {
+  instanceId = 'not-found';
+}
+
 var instanceDefinitionsRootPath = path.join(configsData.projects.current.path, '.oracle-resources');
 var librariesDir = path.join(instanceDefinitionsRootPath, 'assets', 'libraries');
 var apiDir = path.join(instanceDefinitionsRootPath, 'api');

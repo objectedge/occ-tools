@@ -95,10 +95,16 @@ function doRequest(config, token, callback) {
       winston.debug('Received error from OCC:', err);
       return callback(err);
     }
-    if (httpResponse.statusCode === 204){
+
+    if (httpResponse.statusCode === 204) {
       // no content success response
       return callback(null, '');
     } else if (!config.download) {
+
+      if(config.method.toLowerCase() === 'head') {
+        return callback(null, { statusCode: httpResponse.statusCode, headers: httpResponse.headers });
+      }
+
       return callback(null, config.body ? body : JSON.parse(body));
     }
   }).on('response', function (response) {

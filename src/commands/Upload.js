@@ -123,8 +123,8 @@ Upload.prototype.do_search.help = (
 Upload.prototype.do_sse = function(subcmd, opts, args, callback){
   var name = args[0];
 
-  if (!name) {
-    return callback('Sever side extension name not specified.');
+  if (!name && !opts.names && !opts.all) {
+    return callback('You must provide at least one of the following arguments: [SSE Name] or --names=[list of sses] or --all.');
   }
 
   var sse = new ServerSideExtension('adminUI');
@@ -138,7 +138,7 @@ Upload.prototype.do_sse = function(subcmd, opts, args, callback){
     return callback(error);
   });
 
-  sse.upload(name, callback);
+  sse.upload(name, opts);
 };
 
 Upload.prototype.do_sse.help = (
@@ -146,6 +146,46 @@ Upload.prototype.do_sse.help = (
   'Usage:\n' +
   '     {{name}} {{cmd}} <sse-name>'
 );
+
+Upload.prototype.do_sse.options = [
+  {
+    names: ['names', 'n'],
+    helpArg: '[names]',
+    type: 'string',
+    help: '(Optional) The list of SSEs to be uploaded separated by comma'
+  },
+  {
+    names: ['npm', 'i'],
+    helpArg: '[npm]',
+    type: 'bool',
+    help: '(Optional) Should remove node modules and install with --only=prod'
+  },
+  {
+    names: ['all', 'a'],
+    type: 'bool',
+    help: '(Optional) Deploy all SSEs'
+  },
+  {
+    names: ['times', 't'],
+    helpArg: '[times]',
+    type: 'number',
+    default: 20,
+    help: '(Optional) The maximum number of times that we will check if the SSE Server is up. Default to 20.'
+  },
+  {
+    names: ['delay', 'd'],
+    helpArg: '[delay]',
+    type: 'number',
+    default: 15000,
+    help: '(Optional) The delay between each SSE Server Push in Milliseconds. Default to 15000ms.'
+  },
+  {
+    names: ['skip', 's'],
+    helpArg: '[skip]',
+    type: 'string',
+    help: '(Optional) The list of SSEs to skipped separated by comma'
+  },
+];
 
 Upload.prototype.do_email = function(subcmd, opts, args, callback) {
   var emailId = args[0];

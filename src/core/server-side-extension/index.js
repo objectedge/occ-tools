@@ -27,14 +27,24 @@ function ServerSideExtension(environment, options) {
   this._environment = environment;
   this._auth = new Auth(environment);
   this._occ = new OCC(environment, this._auth);
+  this._occ_sse = new OCC('adminX');
   this.options = options;
 }
 
 util.inherits(ServerSideExtension, EventEmitter);
 
-ServerSideExtension.prototype.upload = function(name) {
+ServerSideExtension.prototype.upload = function(name, opts) {
   var self = this;
-  _upload.call(self, name, function(error) {
+
+  if(opts.names) {
+    opts.names = opts.names.split(',');
+  }
+
+  if(opts.skip) {
+    opts.skip = opts.skip.split(',');
+  }
+
+  _upload.call(self, name, opts, function(error) {
     if (error) {
       self.emit('error', error);
     } else {

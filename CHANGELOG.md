@@ -2,6 +2,18 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.34] - 2020-11-12]
+### Added
+- New options to upload sse command:
+  - --names(-n) = A list of SSEs to be deployed. Separated by comma
+  - --npm(-i) = Flag that indicates if the SSE Node Module should be installed. It will remove the node_modules folder and run npm install --only=prod
+  - --all(-a) = Upload all SSEs available locally
+  - --times(-t) = The amount of times the occ-tools should try before stopping the upload action
+  - --delay(-d) = The delay to try again between the upload attempts
+  - --skip(-s) = SSEs those should be excluded from the Upload action. This should be a list of SSE's names separated by comma.
+### Fixed
+- The upload command for the SSE will always check if the SSE server is up before trying to make the call to the server. It will check if the server is up, if it's not, then it will try check again until it reaches the max attempts defined in the --times option.
+
 ## [2.0.0-beta.33] - 2020-11-04]
 ### Fixed
 - OCI env name support

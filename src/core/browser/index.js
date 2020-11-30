@@ -12,7 +12,7 @@ var isWsl = require('is-wsl');
 
 var PAC_FILE_PATH = appConfig.proxy.pacFile;
 var PAC_TEMPLATE_FILE_PATH = path.join(__dirname, 'proxy.template.pac');
-var PROXY_PAC_URL = 'http://localhost:' + appConfig.proxy.port + appConfig.proxy.pacUrlPath;
+var PROXY_PAC_URL = 'http://' + appConfig.currentIP + ':' + appConfig.proxy.port + appConfig.proxy.pacUrlPath;
 
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');

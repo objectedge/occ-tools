@@ -2,6 +2,10 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.35] - 2020-11-30]
+### Fixed
+- Changed Proxy Pac domain from local host to current machine ip.
+
 ## [2.0.0-beta.34] - 2020-11-12]
 ### Added
 - New options to upload sse command:

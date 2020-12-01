@@ -5,6 +5,7 @@ This project must adhere to [this](https://github.com/olivierlacan/keep-a-change
 ## [2.0.0-beta.35] - 2020-11-30]
 ### Fixed
 - Changed Proxy Pac domain from local host to current machine ip.
+- Error EPIPE Issue on Proxy
 
 ## [2.0.0-beta.34] - 2020-11-12]
 ### Added

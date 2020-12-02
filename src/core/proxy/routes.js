@@ -43,8 +43,8 @@ routes.mainHtmlPage = function () {
   proxyInstance.proxyServer.setRoute({
     type: 'html',
     method: 'GET',
-    url: /^((?!client|\/file\/|occs-admin|\/occ-proxy-panel|.*?\.(html?|template|txt|map)).)*$/,
-    // onlySuccessCode: true,
+    url: /^((?!client|\/file\/|occs-admin|\/occ-proxy-panel|.*?\.(html?|template|txt)).)*$/,
+    onlySuccessCode: true,
     callback: function ($, req, resp) {
       //Adding occ proxy context
       $('html').addClass('occpc');

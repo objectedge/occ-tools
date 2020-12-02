@@ -2,6 +2,11 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.36] - 2020-12-01]
+### Fixed
+- Reverting changes on the Proxy Pac File ip
+- Adding restriction to only proxy success response status code for the HTML. It was throwing the EPIPE issue
+
 ## [2.0.0-beta.35] - 2020-11-30]
 ### Fixed
 - Changed Proxy Pac domain from local host to current machine ip.

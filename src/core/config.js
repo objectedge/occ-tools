@@ -15,15 +15,31 @@ var currentIP = occToolsConfigsCore.getCurrentIP();
 var baseUrl = configsData.projects.current.url;
 var username = configsData.projects.current.credentials.username;
 var password = configsData.projects.current.credentials.password;
+var applicationKey = configsData.projects.current.credentials['application-key'];
 var storefrontDir = configsData.projects['storefront-dir'];
 var absoluteStorefrontDir = path.join(configsData.projects.current.path, storefrontDir);
 
 var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : true;
+var useApplicationKey = typeof configsData['use-application-key'] !== 'undefined' ? configsData['use-application-key'] : false;
+
 var loginCredentials = {
   grant_type: 'password',
   username: username,
   password: password
 };
+var loginHeaderAuth = {};
+
+if(useApplicationKey) {
+  loginCredentials = {
+    grant_type: 'client_credentials'
+  };
+
+  loginHeaderAuth = {
+    'Authorization': 'Bearer ' + applicationKey
+  };
+
+  useMFALogin = false;
+}
 
 if(useMFALogin) {
   loginCredentials.totp_code = configsData['totp-code'];
@@ -169,6 +185,7 @@ var _configDescriptor = {
     store: baseUrl.replace('ccadmin', 'ccstore')
   },
   useMFALogin: useMFALogin,
+  useApplicationKey: useApplicationKey,
   tokens: {
     admin: {
       access: path.join(tempRootFolder, 'tokens/admin/token.txt'),
@@ -188,6 +205,7 @@ var _configDescriptor = {
     }
   },
   credentials: loginCredentials,
+  loginHeaderAuth: loginHeaderAuth,
   occToolsVersion: require('../../package.json').version,
   proxy: {
     pacFile: path.join(tempRootFolder, 'proxy/proxy.pac'),

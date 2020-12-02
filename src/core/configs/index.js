@@ -17,7 +17,7 @@ function setPromptSchema(schema) {
 
 function removeLoginToken(cb) {
   var TokenStorage = require('../auth/TokenStorage');
-  var tokenStorage = new TokenStorage('adminUI');
+  var tokenStorage = new TokenStorage('admin');
   tokenStorage.remove('access', function (error) {
     // Don't need to finish the execution here with callback, only show the error and update the configs
     if(error) {
@@ -129,6 +129,22 @@ Configs.prototype.setProjectMFALogin = function (useMFALogin, cb) {
     configsJson['use-mfa-login'] = useMFALogin;
     removeLoginToken(function () {
       updateConfigs(configsJson, 'Use MFA Login', cb);
+    });
+  });
+};
+
+Configs.prototype.setProjectApplicationKeyLogin = function (useApplicationKey, cb) {
+  var self = this;
+
+  self.ensureMainConfigsFile(function(error, configsJson) {
+    if(error) {
+      cb(error);
+      return;
+    }
+
+    configsJson['use-application-key'] = useApplicationKey;
+    removeLoginToken(function () {
+      updateConfigs(configsJson, 'Use Application Key', cb);
     });
   });
 };
@@ -289,35 +305,47 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
 
     var credentials = configsJson.projects.credentials[options.projectName] || {};
     configsJson.projects.credentials[options.projectName] = credentials;
+
     var envCredentials = credentials[options.env] || {};
     configsJson.projects.credentials[options.projectName][options.env] = envCredentials;
 
+    var getCredentialValue = function(credentialsObject, envCredentials, key) {
+      return credentialsObject[key] ? credentialsObject[key] : envCredentials[key];
+    };
+
     var updateCredentials = function(credentialsObject, changeCurrent) {
-      envCredentials.username = credentialsObject.username;
-      envCredentials.password = credentialsObject.password;
+      envCredentials.username = getCredentialValue(credentialsObject, envCredentials, 'username');
+      envCredentials.password = getCredentialValue(credentialsObject, envCredentials, 'password');
+      envCredentials['application-key'] = getCredentialValue(credentialsObject, envCredentials, 'application-key');
 
       if(changeCurrent) {
-        configsJson.projects.current.credentials.username = credentialsObject.username;
-        configsJson.projects.current.credentials.password = credentialsObject.password;
+        configsJson.projects.current.credentials.username = getCredentialValue(credentialsObject, envCredentials, 'username');
+        configsJson.projects.current.credentials.password = getCredentialValue(credentialsObject, envCredentials, 'password');
+        configsJson.projects.current.credentials['application-key'] = getCredentialValue(credentialsObject, envCredentials, 'application-key');
       }
 
       updateConfigs(configsJson, 'Environment credentials', cb);
     };
 
     // new env
-    if(!options.force && !envCredentials.username && !envCredentials.password) {
+    if(!options.force && !envCredentials.username && !envCredentials.password && !envCredentials['application-key']) {
       var schema = setPromptSchema({
         properties: {
           username: {
             description: 'OCC environment username',
             required: true,
-            message: 'Please type a your OCC environment username'
+            message: 'Please type a your OCC enviroment username'
           },
           password: {
             hidden: true,
             description: 'OCC environment password',
             required: true,
-            message: 'Please type a your OCC environdddment password'
+            message: 'Please type a your OCC enviroment password'
+          },
+          'application-key': {
+            description: 'OCC Application Key(Optional)',
+            required: false,
+            message: 'Please type a your OCC enviroment application key'
           }
         }
       });
@@ -338,10 +366,11 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
     }
 
     // changing env
-    if(!options.force && envCredentials.username && envCredentials.password) {
+    if(!options.force && ((envCredentials.username && envCredentials.password) || envCredentials['application-key'])) {
       updateCredentials({
         username: envCredentials.username,
-        password: envCredentials.password
+        password: envCredentials.password,
+        'application-key': options['application-key'] || ""
       }, true);
       return;
     }
@@ -350,7 +379,8 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
     if(options.force) {
       updateCredentials({
         username: options.username,
-        password: options.password
+        password: options.password,
+        'application-key': options['application-key'] || ""
       }, true);
       return;
     }

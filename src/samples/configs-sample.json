@@ -9,7 +9,8 @@
       "url": "",
       "credentials": {
         "username": "",
-        "password": ""
+        "password": "",
+        "application-key": ""
       },
       "theme": {
         "name": "",
@@ -25,5 +26,6 @@
     "token": ""
   },
   "use-mfa-login": true,
+  "use-application-key": false,
   "totp-code": "123456"
 }

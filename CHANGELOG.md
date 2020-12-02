@@ -2,6 +2,10 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.37] - 2020-12-02]
+### Add
+- Support to login with Application Key
+
 ## [2.0.0-beta.36] - 2020-12-01]
 ### Fixed
 - Reverting changes on the Proxy Pac File ip

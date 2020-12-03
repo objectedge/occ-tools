@@ -2,6 +2,15 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.38] - 2020-12-03]
+### Fixed
+- Errors on the authentication and no logs were being displayed
+- Option to switch between MFA LOGIN and APPLICATION KEY was not working properly
+
+### ADDED
+- Option to pass the `--totp-code` in the command, e.g: occ-tools --totp-code=123456 upload sse oeUserSyncConnector. This option will force the login to use MFA LOGIN instead application key
+- Option to pass the `--use-app-key` in the command, e.g: occ-tools --use-app-key upload sse oeUserSyncConnector. This option will force to login with Application Key instead of MFA LOGIN
+
 ## [2.0.0-beta.37] - 2020-12-02]
 ### Add
 - Support to login with Application Key

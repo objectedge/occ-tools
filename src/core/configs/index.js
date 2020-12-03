@@ -18,7 +18,7 @@ function setPromptSchema(schema) {
 function removeLoginToken(cb) {
   var TokenStorage = require('../auth/TokenStorage');
   var tokenStorage = new TokenStorage('admin');
-  tokenStorage.remove('access', function (error) {
+  tokenStorage.removeAll(function (error) {
     // Don't need to finish the execution here with callback, only show the error and update the configs
     if(error) {
       winston.error('Error on trying to remove the current token', error);

@@ -22,27 +22,23 @@ var absoluteStorefrontDir = path.join(configsData.projects.current.path, storefr
 var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : true;
 var useApplicationKey = typeof configsData['use-application-key'] !== 'undefined' ? configsData['use-application-key'] : false;
 
-var loginCredentials = {
+var loginHeaderAuth =  {
+  'Authorization': 'Bearer ' + applicationKey
+};
+
+var loginCredentialsMFA = {
   grant_type: 'password',
   username: username,
-  password: password
+  password: password,
+  totp_code: configsData['totp-code']
 };
-var loginHeaderAuth = {};
+
+var loginCredentialsApplicationKey = {
+  grant_type: 'client_credentials'
+};
 
 if(useApplicationKey) {
-  loginCredentials = {
-    grant_type: 'client_credentials'
-  };
-
-  loginHeaderAuth = {
-    'Authorization': 'Bearer ' + applicationKey
-  };
-
   useMFALogin = false;
-}
-
-if(useMFALogin) {
-  loginCredentials.totp_code = configsData['totp-code'];
 }
 
 var tempRootFolder = path.join(os.tmpdir(), 'occ-tools-data');
@@ -96,7 +92,8 @@ var currentEnvironmentDetails = {
   url: configsData.projects.current.url,
   store: baseUrl.replace('ccadmin', 'ccstore'),
   dns: baseUrl.replace('ccadmin', 'ccstore'),
-  local: baseUrl.replace('ccadmin', 'loca.ccstore')
+  local: baseUrl.replace('ccadmin', 'loca.ccstore'),
+  applicationKey: applicationKey
 }
 
 if(envDetailsFromProject) {
@@ -204,7 +201,9 @@ var _configDescriptor = {
       file: path.join(tempRootFolder, 'tokens/admin/file_token.txt')
     }
   },
-  credentials: loginCredentials,
+  credentials: useApplicationKey ? loginCredentialsApplicationKey : loginCredentialsMFA,
+  loginCredentialsMFA: loginCredentialsMFA,
+  loginCredentialsApplicationKey: loginCredentialsApplicationKey,
   loginHeaderAuth: loginHeaderAuth,
   occToolsVersion: require('../../package.json').version,
   proxy: {

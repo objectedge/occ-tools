@@ -39,7 +39,9 @@ function OccTools(logger) {
     options: [
       { names: ['verbose', 'v'], type: 'bool', help: 'Verbose output.' },
       { names: ['help', 'h'], type: 'bool', help: 'Print help and exit.' },
-      { name: 'version', type: 'bool', help: 'Print version and exit.' }
+      { name: 'version', type: 'bool', help: 'Print version and exit.' },
+      { names: ['totp-code', 'y'], type: 'string', help: 'It will force mfalogin with the provided Totp Code.' },
+      { names: ['use-app-key', 'a'], type: 'bool', help: 'Forces the application key usage.' },
     ]
   });
 }
@@ -47,7 +49,7 @@ function OccTools(logger) {
 util.inherits(OccTools, Cmdln);
 
 function blockCommandsByEnvBranch(args, callback) {
-  var allowedCommands = ['version', 'configs', 'list', 'user-commands', 'browser', 'proxy', 'compile', 'generate', 'env'];
+  var allowedCommands = ['version', 'configs', 'list', 'user-commands', 'browser', 'proxy', 'compile', 'generate', 'env', 'totp-code', 'use-app-key'];
   var command = args[0];
   var containsHelpFlag = args.filter(function (arg) {
     return /help|--h/.test(arg);
@@ -119,6 +121,25 @@ OccTools.prototype.init = function (options, args, callback) {
 
     if (options.verbose) {
       self.logger.transports.console.level = 'debug';
+    }
+
+    if (options.totp_code) {
+      winston.info('Forcing MFA LOGIN using the following TOTP CODE: ' + options.totp_code);
+      appConfig.useApplicationKey = false;
+      appConfig.useMFALogin = true;
+      appConfig.credentials = appConfig.loginCredentialsMFA;
+      appConfig.credentials.totp_code = options.totp_code;
+    }
+
+    if (options.use_app_key && !options.totp_code) {
+      if(!appConfig.environment.details.applicationKey) {
+        winston.error('No application key provided, run: occ-tools configs set-env-credentials');
+        return callback();
+      }
+      winston.info('Forcing login with application key...');
+      appConfig.useApplicationKey = true;
+      appConfig.useMFALogin = false;
+      appConfig.credentials = appConfig.loginCredentialsApplicationKey;
     }
 
     Cmdln.prototype.init.apply(this, allArgs);

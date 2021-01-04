@@ -2,9 +2,9 @@
 
 var _github;
 
-function getRemoteContent(options, callback) {  
+function getRemoteContent(options, callback) {
   var contentOptions = {
-    owner: options.oraganization || 'intelimen',
+    owner: options.oraganization || 'objectedge',
     repo: options.repo || 'occ-components',
     path: options.remotePath
   };

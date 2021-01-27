@@ -1121,7 +1121,9 @@ routes.extraRoutes = function () {
           }
         };
 
-        return new Promise(route.process.bind(route))
+        return new Promise(function(resolve, reject) {
+          route.process(resolve, reject, req, resp);
+        })
           .then(resolver)
           .catch(function (data) {
             var data = data || {};

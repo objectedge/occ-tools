@@ -53,10 +53,18 @@ var createInstances = function (widgetType, backup, occ, config, callback) {
         }
       };
       occ.request(request, function (error, response) {
-        if (error || response.errorCode) cb(error || response.message);
-        winston.info('New instance created %s', response.repositoryId);
-        // store the new instances indexed by the previous instance ID
-        newInstances[instance.id] = response.repositoryId;
+        if (error || (response && response.errorCode)) {
+          return cb(error || response.message);
+        }
+
+        if(response) {
+          winston.info('New instance created %s', response.repositoryId);
+          // store the new instances indexed by the previous instance ID
+          newInstances[instance.id] = response.repositoryId;
+        } else {
+          winston.info('No Response from the server');
+        }
+
         cb();
       });
     }, function (error) {
@@ -122,6 +130,8 @@ var placeInstances = function (widgetType, backup, occ, config, instances, callb
         }
       };
       occ.request(request, function (error, response) {
+        response = response || {};
+
         if (error || response.errorCode) {
           // Dont block the entire process because of one error.
           winston.error(response);
@@ -154,6 +164,8 @@ var getGlobalInstance = function (widgetType, backup, occ, config, instances, ca
   if (config.global && backup.widgetIds && backup.widgetIds.length) {
     winston.info('Getting widget new global instance');
     occ.request('/widgetDescriptors/instances?source=101', function (error, response) {
+      response = response || { items: [] };
+
       if (error || response.errorCode) callback(error || response.message);
       // store widget instances information
       var widget = response.items.find(function (widget) {
@@ -199,6 +211,8 @@ var restoreSiteAssociations = function (widgetType, backup, occ, instances, glob
     };
     winston.info('Restoring the previous global widget site associations');
     occ.request(options, function (error, response) {
+      response = response || {};
+
       if (error || response.errorCode) callback(error || response.message);
       callback(null, instances);
     });
@@ -220,6 +234,8 @@ var getWidgetConfigurations = function (widgetType, backup, occ, instances, call
   if (instances) {
     winston.info('Retrieving new widget configurations');
     occ.request('/widgetDescriptors/instances?source=101', function (error, response) {
+      response = response || { items: [] };
+
       if (error || response.errorCode) callback(error || response.message);
 
       // find the widget instance
@@ -286,6 +302,8 @@ var restoreConfiguration = function (widgetType, backup, occ, instances, configu
           }
         };
         occ.request(request, function (error, response) {
+          response = response || {};
+
           if (error){
             cb(error);
           }else if (response.errorCode || (response.status && parseInt(response.status) >= 400)) {

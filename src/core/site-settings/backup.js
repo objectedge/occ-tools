@@ -56,10 +56,10 @@ var getSiteSettings = function (id, type, occ, backup, callback) {
       occ.request(options, function (error, response) {
         // When error code is 33068 it means that the settings does not exist on OCC
         // it could be the first time the user is installing it, so we accept it
-        if (error || (response.errorCode && response.errorCode != '33068')) {
+        if (error || (response && response.errorCode && response.errorCode != '33068')) {
           cb(error || response.message);
         }
-        if (response.data) {
+        if (response && response.data) {
           backup.data[site] = response.data;
           if (type === 'gateway') {
             delete backup.data[site].shownInStore;

@@ -4,7 +4,7 @@
   "version": "2.0.0-beta.26",
   "description": "Object Edge tools for tasks automation on Oracle Cloud Commerce platform.",
   "license": "MIT",
-  "repository": "github.com/intelimen/occ-tools",
+  "repository": "github.com/objectedge/occ-tools",
   "private": true,
   "author": {
     "name": "Douglas Hipolito",

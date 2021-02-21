@@ -2,6 +2,10 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.40] - 2021-02-21]
+### Added
+- Support to ccstore path on webpack rules
+
 ## [2.0.0-beta.38] - 2020-12-03]
 ### Fixed
 - Errors on the authentication and no logs were being displayed

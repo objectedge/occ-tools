@@ -75,7 +75,7 @@ function jsBundle(options, done) {
       libraryTarget: 'amd'
     },
     externals: [
-      /^((\/file)|(\/oe-files)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/
+      /^((\/file)|(\/oe-files)|(\/ccstorex?)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/
     ],
     module: {
       loaders: [{

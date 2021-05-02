@@ -1,11 +1,13 @@
 'use strict';
 
-var fs = require('fs');
+var fs = require('fs-extra');
 var util = require('util');
 var async = require('async');
 var path = require('path');
 var winston = require('winston');
 var Glob = require('glob').Glob;
+var UglifyJS = require('uglify-js');
+var os = require('os');
 var _config = require('../config');
 
 // Number of parallel uploads
@@ -55,7 +57,7 @@ function uploadFiles(settings, fileList, callback) {
       var destination = util.format('/%s/%s', settings.folder, path.basename(file));
       async.waterfall([
         initFileUpload.bind(self, destination, settings),
-        doFileUpload.bind(self, file, destination)
+        doFileUpload.bind(self, file, destination, settings)
       ], cb);
     }, callback);
 }
@@ -83,6 +85,45 @@ function initFileUpload(destination, settings, callback) {
 }
 
 /**
+ * Minify JSON file since Uglify can't do that
+ *
+ * @param {String} source file path
+ * @returns {String} minified file content
+ */
+function minifyJSONFile(source) {
+  var fileContent = fs.readFileSync(source, 'utf8');
+  var result = JSON.stringify(JSON.parse(fileContent));
+
+  return result;
+}
+
+/**
+ * Generate temporary minified file and return its path
+ *
+ * @param {String} source file path
+ * @returns {String} temp file path
+ */
+function generateMinifiedTempFile(source) {
+  var fileName = path.basename(source);
+  var extension = path.extname(source);
+
+  // Process file
+  var isJSON = /\.json/i.test(extension);
+  var minifiedContent = isJSON
+    ? minifyJSONFile(source)
+    : UglifyJS.minify(source).code;
+
+  // Generate temp file
+  var tempFileDir = path.join(os.tmpdir(), 'occ-tools-files');
+  var tempFilePath = path.join(tempFileDir, fileName);
+
+  fs.ensureDirSync(tempFileDir);
+  fs.writeFileSync(tempFilePath, minifiedContent);
+
+  return tempFilePath;
+}
+
+/**
  * Actually upload the file to OCC
  *
  * @param {String} source the local file path
@@ -90,12 +131,18 @@ function initFileUpload(destination, settings, callback) {
  * @param {String} token the token for file upload
  * @param {Function} callback the callback function
  */
-function doFileUpload(source, destination, token, callback) {
+function doFileUpload(source, destination, settings, token, callback) {
   var self = this;
   async.waterfall([
     // read the file as base64
     function (callback) {
-      fs.readFile(source, function (error, file) {
+      var extension = path.extname(source);
+      var shouldMinify = !settings.no_minify && /\.js/.test(extension);
+      var target = shouldMinify
+        ? generateMinifiedTempFile(source)
+        : source;
+
+      fs.readFile(target, function (error, file) {
         return callback(error, new Buffer(file).toString('base64'));
       });
     },

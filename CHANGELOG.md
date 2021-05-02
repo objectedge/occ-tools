@@ -2,6 +2,13 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.41] - 2021-05-01]
+### Added
+- Minify `.json` and `.js` extensions when uploading files
+
+### Fixed
+- Update outdated packages due to node deprecated warnings
+
 ## [2.0.0-beta.40] - 2021-02-21]
 ### Added
 - Support to ccstore path on webpack rules

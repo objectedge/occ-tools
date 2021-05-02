@@ -137,7 +137,7 @@ function doFileUpload(source, destination, settings, token, callback) {
     // read the file as base64
     function (callback) {
       var extension = path.extname(source);
-      var shouldMinify = !settings['no-minify'] && /\.js/.test(extension);
+      var shouldMinify = !settings.no_minify && /\.js/.test(extension);
       var target = shouldMinify
         ? generateMinifiedTempFile(source)
         : source;

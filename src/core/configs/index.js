@@ -317,11 +317,13 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
       envCredentials.username = getCredentialValue(credentialsObject, envCredentials, 'username');
       envCredentials.password = getCredentialValue(credentialsObject, envCredentials, 'password');
       envCredentials['application-key'] = getCredentialValue(credentialsObject, envCredentials, 'application-key');
+      envCredentials.mfaSecret = getCredentialValue(credentialsObject, envCredentials, 'mfaSecret');
 
       if(changeCurrent) {
         configsJson.projects.current.credentials.username = getCredentialValue(credentialsObject, envCredentials, 'username');
         configsJson.projects.current.credentials.password = getCredentialValue(credentialsObject, envCredentials, 'password');
         configsJson.projects.current.credentials['application-key'] = getCredentialValue(credentialsObject, envCredentials, 'application-key');
+        configsJson.projects.current.credentials.mfaSecret = getCredentialValue(credentialsObject, envCredentials, 'mfaSecret');
       }
 
       updateConfigs(configsJson, 'Environment credentials', cb);
@@ -341,6 +343,11 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
             description: 'OCC environment password',
             required: true,
             message: 'Please type a your OCC enviroment password'
+          },
+          mfaSecret: {
+            description: 'OCC environment MFA secret',
+            required: true,
+            message: 'Please type a your OCC enviroment MFA secret'
           },
           'application-key': {
             description: 'OCC Application Key(Optional)',
@@ -370,6 +377,7 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
       updateCredentials({
         username: envCredentials.username,
         password: envCredentials.password,
+        mfaSecret: envCredentials.mfaSecret,
         'application-key': options['application-key'] || ""
       }, true);
       return;
@@ -380,6 +388,7 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
       updateCredentials({
         username: options.username,
         password: options.password,
+        mfaSecret: options.mfaSecret,
         'application-key': options['application-key'] || ""
       }, true);
       return;

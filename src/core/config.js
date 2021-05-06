@@ -15,6 +15,7 @@ var currentIP = occToolsConfigsCore.getCurrentIP();
 var baseUrl = configsData.projects.current.url;
 var username = configsData.projects.current.credentials.username;
 var password = configsData.projects.current.credentials.password;
+var mfaSecret = configsData.projects.current.credentials.mfaSecret;
 var applicationKey = configsData.projects.current.credentials['application-key'];
 var storefrontDir = configsData.projects['storefront-dir'];
 var absoluteStorefrontDir = path.join(configsData.projects.current.path, storefrontDir);
@@ -30,6 +31,7 @@ var loginCredentialsMFA = {
   grant_type: 'password',
   username: username,
   password: password,
+  mfaSecret: mfaSecret,
   totp_code: configsData['totp-code']
 };
 

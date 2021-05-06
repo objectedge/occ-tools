@@ -506,6 +506,11 @@ Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback
         required: false,
         message: 'Please type a your OCC enviroment password'
       },
+      mfaSecret: {
+        description: 'OCC environment MFA secret',
+        required: true,
+        message: 'Please type a your OCC enviroment MFA secret'
+      },
       'application-key': {
         description: 'OCC Application Key(Enter to keep current)',
         required: false,
@@ -531,6 +536,7 @@ Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback
       force: true,
       username: result.username,
       password: result.password,
+      mfaSecret: result.mfaSecret,
       'application-key': result['application-key'] || null
     }, callback);
   });

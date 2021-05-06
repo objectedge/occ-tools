@@ -3,6 +3,8 @@
 var async = require('async');
 var winston = require('winston');
 var request = require('request');
+var twoFactor = require('node-2fa');
+var lodash = require('lodash');
 var config = require('../config');
 
 /**
@@ -11,9 +13,15 @@ var config = require('../config');
  * @param  {Function} callback    The fn to be executed after request.
  */
 function occLoginRequest(credentials, callback) {
+  const loginCredentials = lodash.clone(credentials);
+  if (loginCredentials.mfaSecret) {
+    loginCredentials.totp_code = twoFactor.generateToken(loginCredentials.mfaSecret).token;
+    delete loginCredentials.mfaSecret;
+  }
+
   var requestOptions = {
     url: this._loginEndpoint,
-    form: credentials
+    form: loginCredentials
   };
 
   if(config.useApplicationKey) {

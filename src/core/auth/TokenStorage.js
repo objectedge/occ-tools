@@ -34,9 +34,30 @@ TokenStorage.prototype.get = function(type, callback) {
  * @param  {Function} callback The fn to be executed after getting the token.
  */
 TokenStorage.prototype.remove = function(type, callback) {
-  fs.remove(this.tokenDir[type], function(err, data) {
-    return callback(null, err ? '' : data);
+  fs.remove(this.tokenDir[type], function(error) {
+    if(error) {
+      return callback(error);
+    }
+
+    return callback();
   });
+};
+
+/**
+ * Remove All Tokens.
+ * @param  {Function} callback The fn to be executed after getting the token.
+ */
+TokenStorage.prototype.removeAll = function(callback) {
+  Object.keys(config.tokens).forEach(function(env) {
+    try {
+      fs.removeSync(config.tokens[env].access);
+      fs.removeSync(config.tokens[env].file);
+    } catch(error) {
+      callback(error)
+    }
+  });
+
+  callback();
 };
 
 module.exports = TokenStorage;

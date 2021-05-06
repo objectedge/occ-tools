@@ -1,6 +1,7 @@
 'use strict';
 
 var fs = require('fs-extra');
+var walk = require('walkdir');
 var path = require('path');
 var UglifyJS = require('uglify-js');
 var webpack = require('webpack');
@@ -99,7 +100,7 @@ function jsBundle(options, done) {
   var bundler = webpack(webpackConfigs);
 
   bundler.run(function (error, stats) {
-    winston.debug('[bundler:compile] %s', stats.toString({
+    winston.info('[bundler:compile] %s', stats.toString({
       chunks: true, // Makes the build much quieter
       colors: true
     }));
@@ -126,9 +127,9 @@ function clearJsBundleFiles(outputFilePath, entryFilePath, done) {
     fs.unlinkSync(entryFilePath);
 
     if (/oeLibs/.test(entryFilePath)) {
-      fs.walk(path.join(path.dirname(entryFilePath), 'vendors')).on('data', function (item) {
-        if (item.stats.isFile() && /\.min\.js/.test(item.path)) {
-          fs.unlinkSync(item.path);
+      walk(path.join(path.dirname(entryFilePath), 'vendors')).on('file', function (item) {
+        if (/\.min\.js/.test(item)) {
+          fs.unlinkSync(item);
         }
       }).on('end', function () {
         done(null, 'success');
@@ -163,28 +164,28 @@ function bundleAppLevelJS(options, callback) {
     }
   }
 
-  fs.walk(currentAppLevelExtensionDir).on('data', function (item) {
+  walk(currentAppLevelExtensionDir).on('file', function (item) {
 
-    if (new RegExp(configsPath).test(item.path)) return;
+    if (new RegExp(configsPath).test(item)) return;
 
-    if (item.stats.isFile() && /\.js/.test(item.path)) {
-      var jsName = path.basename(item.path, '.js');
+    if (/\.js/.test(item)) {
+      var jsName = path.basename(item, '.js');
 
-      if (/vendors/.test(item.path) && !/\.min\.js/.test(item.path) && configs.uglify !== false) {
-        var minifiedFile = UglifyJS.minify(item.path, configs.uglify);
+      if (/vendors/.test(item) && !/\.min\.js/.test(item) && configs.uglify !== false) {
+        var minifiedFile = UglifyJS.minify(item, configs.uglify);
         var tempFileDir = path.join(transpiledAppLevelDir, 'vendors');
 
-        item.path = path.resolve(tempFileDir, jsName + '.min.js');
+        item = item.resolve(tempFileDir, jsName + '.min.js');
 
         fs.ensureDirSync(tempFileDir);
-        fs.writeFileSync(item.path, minifiedFile.code);
+        fs.writeFileSync(item, minifiedFile.code);
       }
 
       jsName = jsName.replace(/[^\w\s]/g, '');
 
       filesList.push({
         fileName: jsName,
-        path: item.path.replace(/\\/g, '\\\\') // Making sure the app level generator will work fine with windows
+        path: item.replace(/\\/g, '\\\\') // Making sure the app level generator will work fine with windows
       });
     }
   }).on('end', function () {

@@ -4,6 +4,7 @@ var fs = require('fs-extra');
 var util = require('util');
 var appConfig = require('../config');
 var winston = require('winston');
+var walk = require('walkdir');
 var github = require('../github');
 var fetchingOCCCore = false;
 var fetchOCCCoreQueue = [];
@@ -95,7 +96,7 @@ Compiler.prototype.changeSourceMAPURL = function () {
     var sourceMapFiles = [util.format('%s.js.map', jsFILESPath), util.format('%s.min.js.map', jsFILESPath)];
     var remoteSourceMapURLBase = util.format('/file/oe-source-maps/%s/', widgetObject.name);
 
-    sourceMapFiles.forEach(function (sourceMapPath) {    
+    sourceMapFiles.forEach(function (sourceMapPath) {
       if(self.doesItExist(sourceMapPath)) {
         var fileName = path.basename(sourceMapPath);
         var jsFilePath = sourceMapPath.replace('.map', '');
@@ -123,7 +124,7 @@ Compiler.prototype.defineCompiler = function (done) {
     return false;
   }
 
-  plugins.push(new webpack.dependencies.LabeledModulesPlugin());  
+  plugins.push(new webpack.dependencies.LabeledModulesPlugin());
 
   self.configs.widgetsList.forEach(function (widgetObject) {
     plugins.push(new webpack.PrefetchPlugin(path.dirname(widgetObject.entryPath), self.configs.occWidgetCoreImport));
@@ -136,7 +137,7 @@ Compiler.prototype.defineCompiler = function (done) {
 
     moduleObject.request = path.join(self.configs.occComponentsTempDir, moduleName, entryPoint);
   }));
-    
+
   plugins.push(new webpack.optimize.UglifyJsPlugin({
     include: /\.min\.js$/,
     compress: {
@@ -150,15 +151,24 @@ Compiler.prototype.defineCompiler = function (done) {
   var entries = {};
 
   self.configs.widgetsList.forEach(function (widgetObject) {
-    entries[path.join(widgetObject.name, widgetObject.name)] = widgetObject.entryPath;
-    entries[path.join(widgetObject.name, widgetObject.name + '.min')] = widgetObject.entryPath;
+    entries[path.join('widgets', widgetObject.name, widgetObject.name)] = widgetObject.entryPath;
+    entries[path.join('widgets', widgetObject.name, widgetObject.name + '.min')] = widgetObject.entryPath;
   });
 
   var modulesInclude = self.configs.widgetsList.map(function (widgetObject) {
     return widgetObject.baseEntryPath;
   });
   modulesInclude.push(path.join(self.configs.occComponentsTempDir));
-  
+
+  if(self.configs.appLevelFilesList) {
+    self.configs.appLevelFilesList.forEach(appLevelFile => {
+      entries[path.join('app-level', appLevelFile.name, appLevelFile.name)] = appLevelFile.entry;
+      entries[path.join('app-level', appLevelFile.name, appLevelFile.name + '.min')] = appLevelFile.entry;
+      modulesInclude.push(path.dirname(appLevelFile.entry));
+      modulesInclude.push(appLevelFile.appLevelPath);
+    });
+  }
+
   bundlerConfigs = {
     resolveLoader: {
       root: [
@@ -170,7 +180,7 @@ Compiler.prototype.defineCompiler = function (done) {
     },
     entry: entries,
     output: {
-      path: path.join(appConfig.dir.project_root, '.occ-transpiled', 'widgets'),
+      path: path.join(appConfig.dir.project_root, '.occ-transpiled'),
       filename: '/[name].js',
       libraryTarget: 'amd'
     },
@@ -240,6 +250,7 @@ Compiler.prototype.setConfigs = function (options, done) {
   var self = this;
 
   self.configs.widgetsList = options.widgetsList;
+  self.configs.appLevelFilesList = options.appLevelFilesList;
   self.configs.debug = options.debug;
   self.configs.sourceMapType = options.sourceMapType;
 
@@ -262,7 +273,7 @@ Compiler.prototype.fetchOCCCore = function (done) {
     fetchOCCCoreQueue.push(done);
     return;
   }
-  
+
   fetchingOCCCore = true;
   github.list({
     repo: 'occ-components',
@@ -283,15 +294,15 @@ Compiler.prototype.fetchOCCCore = function (done) {
     // Just give some extra time to ensure the file has already been created
     setTimeout(function () {
       done.apply(this, arguments);
-    
+
       if(fetchOCCCoreQueue.length) {
         fetchOCCCoreQueue.forEach(function (itemDone) {
           itemDone();
         });
         fetchOCCCoreQueue = [];
       }
-    }, 150);    
-    
+    }, 150);
+
     fetchingOCCCore = false;
   });
 };

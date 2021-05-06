@@ -3,6 +3,7 @@
 var async = require('async');
 var winston = require('winston');
 var request = require('request');
+var config = require('../config');
 
 /**
  * Do a login request to OCC.
@@ -10,8 +11,17 @@ var request = require('request');
  * @param  {Function} callback    The fn to be executed after request.
  */
 function occLoginRequest(credentials, callback) {
+  var requestOptions = {
+    url: this._loginEndpoint,
+    form: credentials
+  };
+
+  if(config.useApplicationKey) {
+    requestOptions.headers = config.loginHeaderAuth;
+  }
+
   request.post(
-    { url: this._loginEndpoint, form: credentials },
+    requestOptions,
     function (error, response, body) {
       if (error) {
         return callback(error);

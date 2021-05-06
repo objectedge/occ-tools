@@ -4,7 +4,7 @@ var async = require('async');
 var winston = require('winston');
 var request = require('request');
 var fs = require('fs-extra');
-var credentials = require('../config').credentials;
+var config = require('../config');
 
 /**
  * Mount the config object.
@@ -35,6 +35,7 @@ var mountConfig = function(endpoint, rawOpts) {
 
 function getTokenFromOcc(callback) {
   var self = this;
+  var credentials = config.credentials;
   self._auth.isLoggedIn(function(err, token) {
     if (err) return self._auth.signIn(credentials, callback);
     return callback(null, token);
@@ -85,7 +86,15 @@ function doRequest(config, token, callback) {
 
   reloadStreamsIfNecessary(config);
   winston.debug('Requesting to OCC:', config);
+
   request[config.method](config, function (err, httpResponse, body) {
+    var responseBody;
+
+    try {
+      responseBody = config.body ? body : JSON.parse(body);
+    } catch(_) {
+      responseBody = body;
+    }
 
     if (!config.download){
       winston.debug('Response received from OCC:', body);
@@ -95,11 +104,22 @@ function doRequest(config, token, callback) {
       winston.debug('Received error from OCC:', err);
       return callback(err);
     }
-    if (httpResponse.statusCode === 204){
+
+    if (typeof responseBody === 'object' && responseBody.errorCode) {
+      winston.debug(body);
+      return callback(responseBody);
+    }
+
+    if (httpResponse.statusCode === 204) {
       // no content success response
       return callback(null, '');
     } else if (!config.download) {
-      return callback(null, config.body ? body : JSON.parse(body));
+
+      if(config.method.toLowerCase() === 'head') {
+        return callback(null, { statusCode: httpResponse.statusCode, headers: httpResponse.headers });
+      }
+
+      return callback(null, responseBody);
     }
   }).on('response', function (response) {
     // responses with file download
@@ -126,22 +146,42 @@ function tryToRequest(config, token, maxAttempts, callback) {
   var self = this;
   var attempts = 0;
 
+  var loginAttempt = function (callback) {
+    getTokenFromOcc.call(self, function(err, newToken) {
+      attempts++;
+      winston.debug(err);
+      if (err) {
+        return callback(err);
+      }
+
+      token = newToken;
+      return callback();
+    });
+  };
+
   async.whilst(
     function() {
       return attempts < maxAttempts;
     },
     function(callback) {
       doRequest(config, token, function(err, body) {
+        var responseStatus = body && body.status ? parseInt(body.status) : null;
+
         if (err) {
+          var occStatusCode = Object.prototype.toString.call(err) === '[object Object]' && parseInt(err.status);
           attempts++;
+
+          if(occStatusCode === 401) {
+            return loginAttempt(callback);
+          }
+
+          if(occStatusCode === 403 ) {
+            return callback(err.message + '\n\n Try to use a different Auth Method such as TOTP CODE or APP KEY');
+          }
+
           return callback();
-        } else if (body && body.status && parseInt(body.status) === 401) {
-          getTokenFromOcc.call(self, function(err, t) {
-            attempts++;
-            if (err) return callback(err);
-            token = t;
-            return callback();
-          });
+        } else if (responseStatus === 401) {
+          return loginAttempt(callback);
         } else {
           attempts = maxAttempts;
           return callback(null, body);

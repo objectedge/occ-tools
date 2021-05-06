@@ -34,7 +34,7 @@ module.exports = function (github, callback) {
   _github = github;
 
   //Should ensure we are receiving the last configs
-  delete require.cache[require.resolve('../config')];  
+  delete require.cache[require.resolve('../config')];
   var _config = require('../config');
 
   // Fallback to basic authentication

@@ -5,6 +5,7 @@ var winston = require('winston');
 var request = require('request');
 var twoFactor = require('node-2fa');
 var lodash = require('lodash');
+var config = require('../config');
 
 /**
  * Do a login request to OCC.
@@ -18,8 +19,17 @@ function occLoginRequest(credentials, callback) {
     delete loginCredentials.mfaSecret;
   }
 
+  var requestOptions = {
+    url: this._loginEndpoint,
+    form: loginCredentials
+  };
+
+  if(config.useApplicationKey) {
+    requestOptions.headers = config.loginHeaderAuth;
+  }
+
   request.post(
-    { url: this._loginEndpoint, form: loginCredentials },
+    requestOptions,
     function (error, response, body) {
       if (error) {
         return callback(error);

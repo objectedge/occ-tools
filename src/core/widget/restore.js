@@ -122,8 +122,10 @@ var placeInstances = function (widgetType, backup, occ, config, instances, callb
         }
       };
       occ.request(request, function (error, response) {
-        if (error || response.errorCode){
-          cb(error || response.message);
+        if (error || response.errorCode) {
+          // Dont block the entire process because of one error.
+          winston.error(response);
+          cb();
         } else {
           winston.info('Widgets were placed on %s layout', structureId);
           cb();
@@ -255,7 +257,7 @@ var restoreConfiguration = function (widgetType, backup, occ, instances, configu
     winston.info('Restoring widgets previous configurations');
     async.forEach(backup.widgetIds, function (instanceId, cb) {
       var settings = backup.settings[instanceId];
-      if (Object.keys(settings).length) {
+      if (settings && Object.keys(settings).length) {
         // get the instance information
         var instance = backup.widget.instances.find(function (instance) {
           return instance.id === instanceId;

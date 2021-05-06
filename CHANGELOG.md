@@ -2,6 +2,53 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.38] - 2020-12-03]
+### Fixed
+- Errors on the authentication and no logs were being displayed
+- Option to switch between MFA LOGIN and APPLICATION KEY was not working properly
+
+### ADDED
+- Option to pass the `--totp-code` in the command, e.g: occ-tools --totp-code=123456 upload sse oeUserSyncConnector. This option will force the login to use MFA LOGIN instead application key
+- Option to pass the `--use-app-key` in the command, e.g: occ-tools --use-app-key upload sse oeUserSyncConnector. This option will force to login with Application Key instead of MFA LOGIN
+
+## [2.0.0-beta.37] - 2020-12-02]
+### Add
+- Support to login with Application Key
+
+## [2.0.0-beta.36] - 2020-12-01]
+### Fixed
+- Reverting changes on the Proxy Pac File ip
+- Adding restriction to only proxy success response status code for the HTML. It was throwing the EPIPE issue
+
+## [2.0.0-beta.35] - 2020-11-30]
+### Fixed
+- Changed Proxy Pac domain from local host to current machine ip.
+- Error EPIPE Issue on Proxy
+
+## [2.0.0-beta.34] - 2020-11-12]
+### Added
+- New options to upload sse command:
+  - --names(-n) = A list of SSEs to be deployed. Separated by comma
+  - --npm(-i) = Flag that indicates if the SSE Node Module should be installed. It will remove the node_modules folder and run npm install --only=prod
+  - --all(-a) = Upload all SSEs available locally
+  - --times(-t) = The amount of times the occ-tools should try before stopping the upload action
+  - --delay(-d) = The delay to try again between the upload attempts
+  - --skip(-s) = SSEs those should be excluded from the Upload action. This should be a list of SSE's names separated by comma.
+### Fixed
+- The upload command for the SSE will always check if the SSE server is up before trying to make the call to the server. It will check if the server is up, if it's not, then it will try check again until it reaches the max attempts defined in the --times option.
+
+## [2.0.0-beta.33] - 2020-11-04]
+### Fixed
+- OCI env name support
+
+## [2.0.0-beta.32] - 2020-10-22]
+### Added
+- Logs for app level bundler
+
+## [2.0.0-beta.29] - 2020-08-26]
+### Fixed
+- Proxy Slowness
+
 ## [2.0.0-beta.25] - 2019-12-10]
 ### Added
 - Remove the sse-name parameter from the download sse logs command.

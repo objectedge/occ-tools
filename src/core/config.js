@@ -1,4 +1,5 @@
 var path = require('path');
+var fs = require('fs-extra');
 var os = require('os');
 var occToolsConfigsCore = new (require('./configs'));
 
@@ -15,35 +16,143 @@ var baseUrl = configsData.projects.current.url;
 var username = configsData.projects.current.credentials.username;
 var password = configsData.projects.current.credentials.password;
 var mfaSecret = configsData.projects.current.credentials.mfaSecret;
+var applicationKey = configsData.projects.current.credentials['application-key'];
 var storefrontDir = configsData.projects['storefront-dir'];
+var absoluteStorefrontDir = path.join(configsData.projects.current.path, storefrontDir);
 
 var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : true;
-var loginCredentials = {
+var useApplicationKey = typeof configsData['use-application-key'] !== 'undefined' ? configsData['use-application-key'] : false;
+
+var loginHeaderAuth =  {
+  'Authorization': 'Bearer ' + applicationKey
+};
+
+var loginCredentialsMFA = {
   grant_type: 'password',
   username: username,
   password: password,
-  mfaSecret: mfaSecret
+  mfaSecret: mfaSecret,
+  totp_code: configsData['totp-code']
 };
 
-if(useMFALogin) {
-  loginCredentials.totp_code = configsData['totp-code'];
+var loginCredentialsApplicationKey = {
+  grant_type: 'client_credentials'
+};
+
+if(useApplicationKey) {
+  useMFALogin = false;
 }
 
 var tempRootFolder = path.join(os.tmpdir(), 'occ-tools-data');
 var mocksDirName = 'mocks';
+var occToolsUserCommandsPath = configsData.occToolsUserCommandsPath || path.join(configsData.projects.current.path, 'occ-tools-commands');
+
+var instanceId = baseUrl.match(/ccadmin-(.*?)\./);
+
+if(!instanceId) {
+  instanceId = baseUrl.match(/https?:\/\/(.*?)-admin/);
+}
+
+if(instanceId) {
+  instanceId = instanceId[1];
+} else {
+  instanceId = 'not-found';
+}
+
+var instanceDefinitionsRootPath = path.join(configsData.projects.current.path, '.oracle-resources');
+var librariesDir = path.join(instanceDefinitionsRootPath, 'assets', 'libraries');
+var apiDir = path.join(instanceDefinitionsRootPath, 'api');
+
+var oracleDirName = 'default';
+var customDirName = 'custom';
+
+var instanceDefinitionsDir = {
+  root: instanceDefinitionsRootPath,
+  instanceIdPath: path.join(instanceDefinitionsRootPath, instanceId),
+  layouts: path.join(instanceDefinitionsRootPath, instanceId, 'layouts'),
+  widgets: path.join(instanceDefinitionsRootPath, instanceId, 'widgets'),
+
+  libs: librariesDir,
+  oracleLibsDirName: oracleDirName,
+  customLibsDirName: customDirName,
+  oracleLibs: path.join(librariesDir, oracleDirName),
+  customLibs: path.join(librariesDir, customDirName),
+
+  api: apiDir,
+  oracleApiDirName: oracleDirName,
+  customApiDirName: customDirName,
+  oracleApi: path.join(apiDir, oracleDirName),
+  customApi: path.join(apiDir, customDirName)
+};
+
+var allEnvironments = occToolsConfigsCore.getCurrentEnvironments();
+var envDetailsFromProject = allEnvironments.find(env => env.name === configsData.projects.current.env);
+
+var currentEnvironmentDetails = {
+  name: configsData.projects.current.name,
+  env: configsData.projects.current.env,
+  url: configsData.projects.current.url,
+  store: baseUrl.replace('ccadmin', 'ccstore'),
+  dns: baseUrl.replace('ccadmin', 'ccstore'),
+  local: baseUrl.replace('ccadmin', 'loca.ccstore'),
+  applicationKey: applicationKey
+}
+
+if(envDetailsFromProject) {
+  if(envDetailsFromProject.store) {
+    currentEnvironmentDetails.store = envDetailsFromProject.store;
+  }
+
+  if(envDetailsFromProject.dns) {
+    currentEnvironmentDetails.dns = envDetailsFromProject.dns;
+  }
+
+  if(envDetailsFromProject.local) {
+    currentEnvironmentDetails.local = envDetailsFromProject.local;
+  }
+}
+
+var databaseDir = path.join(configsDir, 'database');
+fs.ensureDirSync(databaseDir);
 
 var _configDescriptor = {
   project_name: configsData.projects.current.name,
   configsDir: configsDir,
   configsFilePath: configsFilePath,
   mocksDirName: mocksDirName,
+  instanceId: instanceId,
+  localServer: {
+    api: {
+      port: 443
+    },
+    karma: {
+      port: 9876,
+      urlRoot: '/app'
+    },
+    database: {
+      development: {
+        dialect: "sqlite",
+        storage: path.resolve(databaseDir, "db.development.sqlite"),
+        logging: false
+      },
+      test: {
+        dialect: "sqlite",
+        storage: ":memory:"
+      }
+    }
+  },
   dir: {
     project_base: path.join(configsData.projects.current.path),
-    project_root: path.join(configsData.projects.current.path, storefrontDir),
+    project_root: absoluteStorefrontDir,
     search_root: path.join(configsData.projects.current.path, 'search'),
     server_side_root: path.join(configsData.projects.current.path, 'server-side-extensions'),
     storefront_dir_name: storefrontDir,
-    mocks: path.join(configsData.projects.current.path, storefrontDir, mocksDirName)
+    mocks: path.join(absoluteStorefrontDir, mocksDirName),
+    instanceDefinitions: instanceDefinitionsDir,
+    occToolsProject: path.join(configsData.projects.current.path, 'occ-tools.project.json'),
+    transpiled: path.join(absoluteStorefrontDir, '.occ-transpiled'),
+    occComponents: path.join(absoluteStorefrontDir, '.occ-components'),
+    databaseDir: databaseDir
   },
   theme: {
     name: configsData.projects.current.theme.name,
@@ -52,21 +161,19 @@ var _configDescriptor = {
   environments: occToolsConfigsCore.getCurrentEnvironments(),
   environment: {
     current: configsData.projects.current.env,
-    details: {
-      name: configsData.projects.current.name,
-      env: configsData.projects.current.env,
-      url: configsData.projects.current.url
-    }
+    details: currentEnvironmentDetails
   },
   occToolsPath: path.join(__dirname, '..'),
-  occToolsUserCommandsPath: path.join(configsDir, 'user-commands'),
+  occToolsUserCommandsPath: occToolsUserCommandsPath,
   endpoints: {
     baseUrl: baseUrl,
     admin: baseUrl + '/ccadmin/v1/',
     adminX: baseUrl + '/ccadminx/custom/v1/',
     search: baseUrl + '/gsadmin/v1/',
     adminUI: baseUrl + '/ccadminui/v1/',
-    store: baseUrl.replace('ccadmin', 'ccstore')
+    store: currentEnvironmentDetails.store,
+    dns: currentEnvironmentDetails.dns,
+    local: currentEnvironmentDetails.local
   },
   authEndpoints: {
     baseUrl: baseUrl,
@@ -77,6 +184,7 @@ var _configDescriptor = {
     store: baseUrl.replace('ccadmin', 'ccstore')
   },
   useMFALogin: useMFALogin,
+  useApplicationKey: useApplicationKey,
   tokens: {
     admin: {
       access: path.join(tempRootFolder, 'tokens/admin/token.txt'),
@@ -95,7 +203,10 @@ var _configDescriptor = {
       file: path.join(tempRootFolder, 'tokens/admin/file_token.txt')
     }
   },
-  credentials: loginCredentials,
+  credentials: useApplicationKey ? loginCredentialsApplicationKey : loginCredentialsMFA,
+  loginCredentialsMFA: loginCredentialsMFA,
+  loginCredentialsApplicationKey: loginCredentialsApplicationKey,
+  loginHeaderAuth: loginHeaderAuth,
   occToolsVersion: require('../../package.json').version,
   proxy: {
     pacFile: path.join(tempRootFolder, 'proxy/proxy.pac'),

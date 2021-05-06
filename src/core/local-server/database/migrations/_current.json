@@ -1,0 +1,49 @@
+{
+    "tables": {
+        "apa_allowed_parameters": {
+            "tableName": "apa_allowed_parameters",
+            "indexes": []
+        },
+        "des_descriptor": {
+            "tableName": "des_descriptor",
+            "indexes": []
+        },
+        "met_method": {
+            "tableName": "met_method",
+            "indexes": []
+        },
+        "mty_method_type": {
+            "tableName": "mty_method_type",
+            "indexes": []
+        },
+        "oce_occ_env": {
+            "tableName": "oce_occ_env",
+            "indexes": []
+        },
+        "rqb_request_body": {
+            "tableName": "rqb_request_body",
+            "indexes": []
+        },
+        "rqh_request_headers": {
+            "tableName": "rqh_request_headers",
+            "indexes": []
+        },
+        "rqp_request_parameters": {
+            "tableName": "rqp_request_parameters",
+            "indexes": []
+        },
+        "rda_response_data": {
+            "tableName": "rda_response_data",
+            "indexes": []
+        },
+        "rph_response_headers": {
+            "tableName": "rph_response_headers",
+            "indexes": []
+        },
+        "sch_schema": {
+            "tableName": "sch_schema",
+            "indexes": []
+        }
+    },
+    "revision": 1
+}

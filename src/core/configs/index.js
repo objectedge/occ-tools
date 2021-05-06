@@ -17,8 +17,8 @@ function setPromptSchema(schema) {
 
 function removeLoginToken(cb) {
   var TokenStorage = require('../auth/TokenStorage');
-  var tokenStorage = new TokenStorage('adminUI');
-  tokenStorage.remove('access', function (error) {
+  var tokenStorage = new TokenStorage('admin');
+  tokenStorage.removeAll(function (error) {
     // Don't need to finish the execution here with callback, only show the error and update the configs
     if(error) {
       winston.error('Error on trying to remove the current token', error);
@@ -103,6 +103,20 @@ Configs.prototype.setProjectsBasePath = function (basePath, cb) {
   });
 };
 
+Configs.prototype.setOccToolsCommandsPath = function (occToolsCommandsPath, cb) {
+  var self = this;
+
+  self.ensureMainConfigsFile(function(error, configsJson) {
+    if(error) {
+      cb(error);
+      return;
+    }
+
+    configsJson.occToolsUserCommandsPath = occToolsCommandsPath;
+    updateConfigs(configsJson, 'OCC Tools Commands Path', cb);
+  });
+};
+
 Configs.prototype.setProjectMFALogin = function (useMFALogin, cb) {
   var self = this;
 
@@ -115,6 +129,22 @@ Configs.prototype.setProjectMFALogin = function (useMFALogin, cb) {
     configsJson['use-mfa-login'] = useMFALogin;
     removeLoginToken(function () {
       updateConfigs(configsJson, 'Use MFA Login', cb);
+    });
+  });
+};
+
+Configs.prototype.setProjectApplicationKeyLogin = function (useApplicationKey, cb) {
+  var self = this;
+
+  self.ensureMainConfigsFile(function(error, configsJson) {
+    if(error) {
+      cb(error);
+      return;
+    }
+
+    configsJson['use-application-key'] = useApplicationKey;
+    removeLoginToken(function () {
+      updateConfigs(configsJson, 'Use Application Key', cb);
     });
   });
 };
@@ -275,42 +305,54 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
 
     var credentials = configsJson.projects.credentials[options.projectName] || {};
     configsJson.projects.credentials[options.projectName] = credentials;
+
     var envCredentials = credentials[options.env] || {};
     configsJson.projects.credentials[options.projectName][options.env] = envCredentials;
 
+    var getCredentialValue = function(credentialsObject, envCredentials, key) {
+      return credentialsObject[key] ? credentialsObject[key] : envCredentials[key];
+    };
+
     var updateCredentials = function(credentialsObject, changeCurrent) {
-      envCredentials.username = credentialsObject.username;
-      envCredentials.password = credentialsObject.password;
-      envCredentials.mfaSecret = credentialsObject.mfaSecret;
+      envCredentials.username = getCredentialValue(credentialsObject, envCredentials, 'username');
+      envCredentials.password = getCredentialValue(credentialsObject, envCredentials, 'password');
+      envCredentials['application-key'] = getCredentialValue(credentialsObject, envCredentials, 'application-key');
+      envCredentials.mfaSecret = getCredentialValue(credentialsObject, envCredentials, 'mfaSecret');
 
       if(changeCurrent) {
-        configsJson.projects.current.credentials.username = credentialsObject.username;
-        configsJson.projects.current.credentials.password = credentialsObject.password;
-        configsJson.projects.current.credentials.mfaSecret = credentialsObject.mfaSecret;
+        configsJson.projects.current.credentials.username = getCredentialValue(credentialsObject, envCredentials, 'username');
+        configsJson.projects.current.credentials.password = getCredentialValue(credentialsObject, envCredentials, 'password');
+        configsJson.projects.current.credentials['application-key'] = getCredentialValue(credentialsObject, envCredentials, 'application-key');
+        configsJson.projects.current.credentials.mfaSecret = getCredentialValue(credentialsObject, envCredentials, 'mfaSecret');
       }
 
       updateConfigs(configsJson, 'Environment credentials', cb);
     };
 
     // new env
-    if(!options.force && !envCredentials.username && !envCredentials.password) {
+    if(!options.force && !envCredentials.username && !envCredentials.password && !envCredentials['application-key']) {
       var schema = setPromptSchema({
         properties: {
           username: {
             description: 'OCC environment username',
             required: true,
-            message: 'Please type a your OCC environment username'
+            message: 'Please type a your OCC enviroment username'
           },
           password: {
             hidden: true,
             description: 'OCC environment password',
             required: true,
-            message: 'Please type a your OCC environdddment password'
+            message: 'Please type a your OCC enviroment password'
           },
           mfaSecret: {
             description: 'OCC environment MFA secret',
             required: true,
             message: 'Please type a your OCC enviroment MFA secret'
+          },
+          'application-key': {
+            description: 'OCC Application Key(Optional)',
+            required: false,
+            message: 'Please type a your OCC enviroment application key'
           }
         }
       });
@@ -331,11 +373,12 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
     }
 
     // changing env
-    if(!options.force && envCredentials.username && envCredentials.password) {
+    if(!options.force && ((envCredentials.username && envCredentials.password) || envCredentials['application-key'])) {
       updateCredentials({
         username: envCredentials.username,
         password: envCredentials.password,
-        mfaSecret: envCredentials.mfaSecret
+        mfaSecret: envCredentials.mfaSecret,
+        'application-key': options['application-key'] || ""
       }, true);
       return;
     }
@@ -345,7 +388,8 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
       updateCredentials({
         username: options.username,
         password: options.password,
-        mfaSecret: options.mfaSecret
+        mfaSecret: options.mfaSecret,
+        'application-key': options['application-key'] || ""
       }, true);
       return;
     }

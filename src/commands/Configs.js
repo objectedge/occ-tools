@@ -80,6 +80,12 @@ Configs.prototype.do_init = function(subcmd, opts, args, callback) {
         required: false,
         description: 'Use Multi-Factor Authentication?'
       },
+      'use-application-key': {
+        type: 'boolean',
+        default: false,
+        required: false,
+        description: 'Use Application Key Authentication?'
+      },
       'totp-code': {
         required: false,
         default: '123456',
@@ -152,6 +158,9 @@ Configs.prototype.do_init = function(subcmd, opts, args, callback) {
       },
       function(cb) {
         occToolsConfigs.setProjectMFALogin(result['use-mfa-login'], cb);
+      },
+      function(cb) {
+        occToolsConfigs.setProjectApplicationKeyLogin(result['use-application-key'], cb);
       },
       function(cb) {
         occToolsConfigs.setTotpCode(result['totp-code'], cb);
@@ -335,6 +344,42 @@ Configs.prototype.do_set_mfa_login.help = (
   '{{options}}'
 );
 
+Configs.prototype.do_use_application_key = function(subcmd, opts, args, callback) {
+  var occToolsConfigs = new _Configs();
+
+  var schema = setPromptSchema({
+    properties: {
+      'use-application-key': {
+        type: 'boolean',
+        default: true,
+        required: false,
+        description: 'Use Application Key?'
+      }
+    }
+  });
+
+  prompt.start();
+
+  prompt.get(schema, function (error, result) {
+    if(error) {
+      if (error.message === 'canceled') {
+        return callback('\nOperation canceled');
+      }else {
+        return callback(error.message);
+      }
+    }
+
+    occToolsConfigs.setProjectApplicationKeyLogin(result['use-application-key'], callback);
+  });
+};
+
+Configs.prototype.do_use_application_key.help = (
+  'Set to true or false the Application Key Usage for login\n\n' +
+  'Usage:\n' +
+  '     {{name}} {{cmd}} [options] \n\n' +
+  '{{options}}'
+);
+
 Configs.prototype.do_set_totp_code = function(subcmd, opts, args, callback) {
   var occToolsConfigs = new _Configs();
 
@@ -404,35 +449,14 @@ Configs.prototype.do_set_env.help = (
   '{{options}}'
 );
 
-Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback) {
+Configs.prototype.do_set_user_commands_path = function(subcmd, opts, args, callback) {
   var occToolsConfigs = new _Configs();
+
   var schema = setPromptSchema({
     properties: {
-      'project-name': {
-        description: 'Project\'s name',
+      'user-commands-path': {
         required: true,
-        message: 'Please type a Project name'
-      },
-      env: {
-        description: 'Project\'s env name',
-        required: true,
-        message: 'Please type a Project environment'
-      },
-      username: {
-        description: 'OCC environment username',
-        required: true,
-        message: 'Please type a your OCC enviroment username'
-      },
-      password: {
-        hidden: true,
-        description: 'OCC environment password',
-        required: true,
-        message: 'Please type a your OCC enviroment password'
-      },
-      mfaSecret: {
-        description: 'OCC environment MFA secret',
-        required: true,
-        message: 'Please type a your OCC enviroment MFA secret'
+        description: 'User Commands Path'
       }
     }
   });
@@ -447,14 +471,73 @@ Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback
         return callback(error.message);
       }
     }
-    
+
+    occToolsConfigs.setOccToolsCommandsPath(result['user-commands-path'], callback);
+  });
+};
+
+Configs.prototype.do_set_user_commands_path.help = (
+  'Set the path for the occ-tools user commands path\n\n' +
+  'Usage:\n' +
+  '     {{name}} {{cmd}} [options] \n\n' +
+  '{{options}}'
+);
+
+Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback) {
+  var occToolsConfigs = new _Configs();
+  var configsJson = occToolsConfigs.getConfigsJSON();
+  var currentProject = configsJson.projects.current.name;
+
+  var schema = setPromptSchema({
+    properties: {
+      env: {
+        description: 'Project\'s env name',
+        required: true,
+        message: 'Please type a Project environment'
+      },
+      username: {
+        description: 'OCC environment username(Enter to keep current)',
+        required: false,
+        message: 'Please type a your OCC enviroment username'
+      },
+      password: {
+        hidden: true,
+        description: 'OCC environment password(Enter to keep current)',
+        required: false,
+        message: 'Please type a your OCC enviroment password'
+      },
+      mfaSecret: {
+        description: 'OCC environment MFA secret',
+        required: true,
+        message: 'Please type a your OCC enviroment MFA secret'
+      },
+      'application-key': {
+        description: 'OCC Application Key(Enter to keep current)',
+        required: false,
+        message: 'Please type a your OCC enviroment application key'
+      }
+    }
+  });
+
+  prompt.start();
+
+  prompt.get(schema, function (error, result) {
+    if(error) {
+      if (error.message === 'canceled') {
+        return callback('\nOperation canceled');
+      }else {
+        return callback(error.message);
+      }
+    }
+
     occToolsConfigs.setEnvCredentials({
-      projectName: result['project-name'],
+      projectName: currentProject,
       env: result.env,
       force: true,
       username: result.username,
       password: result.password,
-      mfaSecret: result.mfaSecret
+      mfaSecret: result.mfaSecret,
+      'application-key': result['application-key'] || null
     }, callback);
   });
 };

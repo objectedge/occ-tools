@@ -1,5 +1,6 @@
 require(['jquery'], function ($) {
   window.oe = window.oe || {
+    ip: '#IP',
     occ: {
       version: '#OCC_VERSION'
     },

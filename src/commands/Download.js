@@ -10,6 +10,7 @@ var Stack = require('../core/stack');
 var Files = require('../core/files');
 var ResponseFilter = require('../core/response-filter');
 var ServerSideExtension = require('../core/server-side-extension');
+var AppLevel = require('../core/app-level');
 
 var helpText = 'Download a %s from OCC.\n\n' +
 'Usage:\n' +
@@ -189,10 +190,6 @@ Download.prototype.do_email = function(subcmd, opts, args, callback) {
     'siteId': opts.site || 'siteUS'
   };
 
-  if (!emailId) {
-    return callback('Email ID not specified.');
-  }
-
   var email = new Email('admin');
 
   email.on('complete', function(message) {
@@ -264,7 +261,7 @@ Download.prototype.do_files = function(subcmd, opts, args, callback) {
     ));
   }
 
-  var files = new Files('admin');
+  var files = new Files('adminUI');
 
   files.on('complete', function(message) {
     winston.info(message);
@@ -392,5 +389,27 @@ Download.prototype.do_sse.help = (
   'Usage:\n' +
   '     {{name}} {{cmd}} <sse-name> '
 );
+
+Download.prototype.do_appLevel = function (subcmd, opts, args, callback) {
+  var appLevelName = args[0];
+
+  var appLevel = new AppLevel('admin');
+
+  appLevel.on('complete', function (message) {
+    winston.info(message);
+    return callback();
+  });
+
+  appLevel.on('error', function (error) {
+    return callback(error);
+  });
+
+  appLevel.download(appLevelName, callback);
+};
+
+Download.prototype.do_appLevel.help =
+  'Download the app-level from OCC.\n\n' +
+  '     {{name}} {{cmd}} <app-level-name> [options] \n\n' +
+  '{{options}}';
 
 module.exports = Download;

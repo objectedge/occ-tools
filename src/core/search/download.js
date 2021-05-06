@@ -21,10 +21,9 @@ module.exports = function(app, callback) {
   var downloadFromOCC = function(callback) {
     winston.info('Downloading %s search app', app);
     var options = {
-      'api': util.format('%s.zip', app),
-      'method': 'get',
-      'body': true,
-      'download': tempFile
+      api: util.format('%s.zip', app),
+      method: 'get',
+      download: tempFile,
     };
     self._occ.request(options, function(error, body){
       if (error){

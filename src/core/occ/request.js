@@ -57,6 +57,16 @@ function getToken(callback) {
   });
 }
 
+function getFileToken(token, callback) {
+  var self = this;
+  self._auth.getToken('file', function (err, fileToken) {
+    var cookies = [];
+    try {
+      cookies = JSON.parse(fileToken);
+    } catch (e) {}
+    return callback(null, token, cookies);
+  });
+}
 
 /**
  * Reload streams if they were alread processed.
@@ -81,8 +91,17 @@ function reloadStreamsIfNecessary(config) {
  * @param  {String}   token    The access token.
  * @param  {Function} callback The fn to be executed after request.
  */
-function doRequest(config, token, callback) {
+function doRequest(config, token, fileToken, callback) {
   config.auth = {bearer: token};
+
+  if (config.download) {
+    var jar = request.jar();
+    fileToken.forEach((c) => {
+      var cookie = request.cookie(c);
+      jar.setCookie(cookie, config.url);
+    });
+    config.jar = jar;
+  }
 
   reloadStreamsIfNecessary(config);
   winston.debug('Requesting to OCC:', config);
@@ -142,7 +161,7 @@ function doRequest(config, token, callback) {
  * @param  {Number}   maxAttempts The max attempts to try.
  * @param  {Function} callback    The fn to be executed after request.
  */
-function tryToRequest(config, token, maxAttempts, callback) {
+function tryToRequest(config, token, fileToken, maxAttempts, callback) {
   var self = this;
   var attempts = 0;
 
@@ -164,7 +183,7 @@ function tryToRequest(config, token, maxAttempts, callback) {
       return attempts < maxAttempts;
     },
     function(callback) {
-      doRequest(config, token, function(err, body) {
+      doRequest(config, token, fileToken, function(err, body) {
         var responseStatus = body && body.status ? parseInt(body.status) : null;
 
         if (err) {
@@ -200,10 +219,14 @@ module.exports = function(rawOpts, callback) {
     return callback(new Error('invalid options passed'));
   }
 
-  async.waterfall([
-    getToken.bind(self),
-    function(token, callback) {
-      tryToRequest.call(self, config, token, 3, callback);
-    }
-  ], callback);
+  async.waterfall(
+    [
+      getToken.bind(self),
+      getFileToken.bind(self),
+      function (token, fileToken, callback) {
+        tryToRequest.call(self, config, token, fileToken, 3, callback);
+      },
+    ],
+    callback
+  );
 };

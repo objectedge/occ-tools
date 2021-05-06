@@ -68,30 +68,29 @@ function downloadAllJs(widgetInfo, settings, callback) {
   var describeJsPath = util.format('widgetDescriptors/%s/javascript', widgetInfo.item.id);
   self._occ.request(describeJsPath, function(err, data) {
     if (err) return callback(err);
-    async.each(data.jsFiles, function(jsFile, callback) {
-      async.waterfall([
-        function(callback) {
-          self._auth.getToken('file', callback);
-        },
-        function(fileToken, callback) {
-          var jar = request.jar();
-          var cookie = request.cookie(fileToken);
-          jar.setCookie(cookie, jsFile.url);
-          request({url: jsFile.url, jar: jar}, function(err, response, body) {
-            return err ? callback(err) : callback(null, body);
-          });
-        },
-        function(data, callback) {
-          var jsPath;
-          if (settings && settings.dest) {
-            jsPath = path.join(_configs.dir.project_root, 'widgets', settings.dest, widgetInfo.item.widgetType, 'js');
-          } else {
-            jsPath = path.join(_configs.dir.project_root, 'widgets', widgetInfo.folder, widgetInfo.item.widgetType, 'js');
-          }
-          fs.outputFile(path.join(jsPath, jsFile.name), data, callback);
+    async.each(
+      data.jsFiles,
+      function (jsFile, callback) {
+        var jsPath;
+        if (settings && settings.dest) {
+          jsPath = path.join(_configs.dir.project_root, 'widgets', settings.dest, widgetInfo.item.widgetType, 'js');
+        } else {
+          jsPath = path.join(_configs.dir.project_root, 'widgets', widgetInfo.folder, widgetInfo.item.widgetType, 'js');
         }
-      ], callback);
-    }, callback);
+
+        fs.ensureDir(jsPath, function () {
+          self._occ.request(
+            {
+              url: jsFile.url,
+              method: 'get',
+              download: path.join(jsPath, jsFile.name),
+            },
+            callback
+          );
+        });
+      },
+      callback
+    );
   });
 }
 

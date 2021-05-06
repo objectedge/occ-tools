@@ -1,6 +1,9 @@
 #!/usr/bin/env node
+const { spawnSync } = require("child_process");
+const { resolve } = require("path");
 
-// Replacing the the default http parse by a more flexible/tolerant HTTP parser
-process.binding('http_parser').HTTPParser = require('http-parser-js').HTTPParser;
+var args = process.argv.slice(2).map(a => "'"+a+"'");
 
-return require('./src/occ-tools');
+// Say our "real" entrance script is `app.js`
+const cmd = "node --no-warnings " + resolve(__dirname, "app.js");
+spawnSync(cmd, args, { stdio: "inherit", shell: true });

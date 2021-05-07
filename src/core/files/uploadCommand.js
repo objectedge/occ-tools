@@ -15,7 +15,7 @@ var PARALLEL_UPLOADS = 8;
 
 /**
  * Get all local files based on a glob pattern
- * 
+ *
  * @param {String} globPattern the glob pattern
  * @param {Function} callback the callback function
  */
@@ -194,6 +194,7 @@ function jsBundle(options, done) {
 
   var entryFile = options.source;
   var outputFile = options.tempFilePath;
+
   var webpackConfigs = {
     resolveLoader: {
       root: [
@@ -214,7 +215,7 @@ function jsBundle(options, done) {
         test: /\.js$/,
         loader: 'babel-loader',
         include: [
-          options.dir
+          _config.dir.project_root
         ],
         query: {
           presets: [path.join(occToolsModulesPath, 'babel-preset-es2015')],

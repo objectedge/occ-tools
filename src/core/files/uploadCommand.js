@@ -6,7 +6,7 @@ var async = require('async');
 var path = require('path');
 var winston = require('winston');
 var Glob = require('glob').Glob;
-var UglifyJS = require('uglify-js');
+var webpack = require('webpack');
 var os = require('os');
 var _config = require('../config');
 
@@ -90,11 +90,12 @@ function initFileUpload(destination, settings, callback) {
  * @param {String} source file path
  * @returns {String} minified file content
  */
-function minifyJSONFile(source) {
+function minifyJSONFile(tempFileDir, tempFilePath, source) {
   var fileContent = fs.readFileSync(source, 'utf8');
   var result = JSON.stringify(JSON.parse(fileContent));
-
-  return result;
+  fs.ensureDirSync(tempFileDir);
+  fs.writeFileSync(tempFilePath, result);
+  return tempFilePath;
 }
 
 /**
@@ -103,25 +104,27 @@ function minifyJSONFile(source) {
  * @param {String} source file path
  * @returns {String} temp file path
  */
-function generateMinifiedTempFile(source) {
+function generateBundleTempFile(source, callback) {
   var fileName = path.basename(source);
   var extension = path.extname(source);
-
-  // Process file
-  var isJSON = /\.json/i.test(extension);
-  var minifiedContent = isJSON
-    ? minifyJSONFile(source)
-    : UglifyJS.minify(source).code;
-
   // Generate temp file
   var tempFileDir = path.join(os.tmpdir(), 'occ-tools-files');
   var tempFilePath = path.join(tempFileDir, fileName);
 
-  fs.ensureDirSync(tempFileDir);
-  fs.writeFileSync(tempFilePath, minifiedContent);
-
-  return tempFilePath;
+  // Process file
+  var isJSON = /\.json/i.test(extension);
+  if(isJSON) {
+    callback(null, minifyJSONFile(tempFileDir, tempFilePath, source))
+  } else {
+    jsBundle({
+      'source': source,
+      'dir': tempFileDir,
+      'name': fileName,
+      'tempFilePath': tempFilePath
+    }, callback);
+  }
 }
+
 
 /**
  * Actually upload the file to OCC
@@ -138,11 +141,17 @@ function doFileUpload(source, destination, settings, token, callback) {
     function (callback) {
       var extension = path.extname(source);
       var shouldMinify = !settings.no_minify && /\.js/.test(extension);
-      var target = shouldMinify
-        ? generateMinifiedTempFile(source)
-        : source;
-
-      fs.readFile(target, function (error, file) {
+      var target = source;
+      if(shouldMinify) {
+        generateBundleTempFile(source, function(error, filePath) {
+          return callback(error, filePath);
+        });
+      } else {
+        return callback(null, target);
+      }
+    },
+    function(file, callback) {
+      fs.readFile(file,'utf8', function (error, file) {
         return callback(error, new Buffer(file).toString('base64'));
       });
     },
@@ -162,6 +171,79 @@ function doFileUpload(source, destination, settings, token, callback) {
       });
     }
   ], callback);
+}
+
+/**
+ * Bundle JS file
+ * @param  {Object}   options Generate options
+ * @param  {Function} done   on done the process
+ */
+function jsBundle(options, done) {
+  var occToolsModulesPath = path.join(_config.occToolsPath, '..', 'node_modules');
+
+  var plugins = [];
+  plugins.push(new webpack.dependencies.LabeledModulesPlugin());
+  plugins.push(new webpack.optimize.UglifyJsPlugin({
+    compress: {
+      warnings: false
+    },
+    output: {
+      comments: false
+    }
+  }));
+
+  var entryFile = options.source;
+  var outputFile = options.tempFilePath;
+  var webpackConfigs = {
+    resolveLoader: {
+      root: [
+        occToolsModulesPath
+      ]
+    },
+    entry: entryFile,
+    output: {
+      path: options.dir,
+      filename: options.name,
+      libraryTarget: 'amd'
+    },
+    externals: [
+      /^((\/file)|(\/oe-files)|(\/ccstorex?)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/
+    ],
+    module: {
+      loaders: [{
+        test: /\.js$/,
+        loader: 'babel-loader',
+        include: [
+          options.dir
+        ],
+        query: {
+          presets: [path.join(occToolsModulesPath, 'babel-preset-es2015')],
+          plugins: [
+            path.join(occToolsModulesPath, 'babel-plugin-transform-decorators-legacy'),
+            path.join(occToolsModulesPath, 'babel-plugin-transform-class-properties')
+          ],
+          cacheDirectory: true
+        }
+      }]
+    },
+    plugins: plugins
+  };
+
+  var bundler = webpack(webpackConfigs);
+
+  bundler.run(function (error, stats) {
+    winston.info('[bundler:compile] %s', stats.toString({
+      chunks: true, // Makes the build much quieter
+      colors: true
+    }));
+
+    if (error) {
+      done(error, null);
+      return;
+    }
+
+    done(null, outputFile);
+  });
 }
 
 /**

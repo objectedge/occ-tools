@@ -9,6 +9,7 @@ var Glob = require('glob').Glob;
 var webpack = require('webpack');
 var os = require('os');
 var _config = require('../config');
+var CleanCSS = require('clean-css');
 
 // Number of parallel uploads
 var PARALLEL_UPLOADS = 8;
@@ -113,9 +114,18 @@ function generateBundleTempFile(source, callback) {
 
   // Process file
   var isJSON = /\.json/i.test(extension);
-  if(isJSON) {
+  var isCSS = /\.css/i.test(extension);
+
+  if (isJSON) {
     callback(null, minifyJSONFile(tempFileDir, tempFilePath, source))
-  } else {
+  } else if(isCSS) {
+    cssBundle({
+      'source': source,
+      'dir': tempFileDir,
+      'name': fileName,
+      'tempFilePath': tempFilePath
+    }, callback);
+  }  else {
     jsBundle({
       'source': source,
       'dir': tempFileDir,
@@ -140,7 +150,7 @@ function doFileUpload(source, destination, settings, token, callback) {
     // read the file as base64
     function (callback) {
       var extension = path.extname(source);
-      var shouldMinify = !settings.no_minify && /\.js/.test(extension);
+      var shouldMinify = !settings.no_minify && /(\.js|\.css)/.test(extension);
       var target = source;
       if(shouldMinify) {
         generateBundleTempFile(source, function(error, filePath) {
@@ -245,6 +255,36 @@ function jsBundle(options, done) {
 
     done(null, outputFile);
   });
+}
+
+/**
+ * Bundle CSS file
+ * @param  {Object}   options Generate options
+ * @param  {Function} done   on done the process
+ */
+function cssBundle(options, done) {
+  var cleanCSSOptions = {};
+  var outputFile = options.tempFilePath;
+  var tempFileDir = options.dir;
+
+  var fileContent = fs.readFileSync(options.source, 'utf8');
+  var result = fileContent.toString();
+  var output = new CleanCSS(cleanCSSOptions).minify(result);
+
+  if (output.errors && output.errors.length > 0) {
+    done(output.errors.toString(), null);
+    return;
+  }
+
+  if (output.warnings && output.warnings.length > 0) {
+    done(output.warnings.toString(), null);
+    return;
+  }
+
+  fs.ensureDirSync(tempFileDir);
+  fs.writeFileSync(outputFile, output.styles);
+
+  done(null, outputFile);
 }
 
 /**

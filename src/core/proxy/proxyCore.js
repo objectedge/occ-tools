@@ -408,6 +408,89 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
   });
 };
 
+/**
+* Bundle JS file
+* @param  {String}   source File path to bundle
+* @param  {Function} done   on done the process
+*/
+OCCProxy.prototype.transpileExtraRoute = function (source, done) {
+  var occToolsModulesPath = path.join(config.occToolsPath, '..', 'node_modules');
+  
+  var plugins = [];
+  plugins.push(new webpack.dependencies.LabeledModulesPlugin());
+  plugins.push(new webpack.optimize.UglifyJsPlugin({
+    compress: {
+      warnings: false
+    },
+    output: {
+      comments: false
+    }
+  }));
+
+  var entryFile = source;
+  var fileName = path.basename(entryFile);
+  var outputPath = path.join(config.dir.project_root, '.occ-transpiled', 'files');
+  var outputFile = path.join(outputPath, fileName);
+  
+
+  var webpackConfigs = {
+    resolveLoader: {
+      root: [
+        occToolsModulesPath
+      ]
+    },
+    entry: entryFile,
+    output: {
+      path: outputPath,
+      filename: fileName,
+      libraryTarget: 'amd'
+    },
+    externals: [
+      /^((\/file)|(\/oe-files)|(\/ccstorex?)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/
+    ],
+    module: {
+      loaders: [{
+        test: /\.js$/,
+        loader: 'babel-loader',
+        include: [
+          config.dir.project_root
+        ],
+        query: {
+          presets: [path.join(occToolsModulesPath, 'babel-preset-es2015')],
+          plugins: [
+            path.join(occToolsModulesPath, 'babel-plugin-transform-decorators-legacy'),
+            path.join(occToolsModulesPath, 'babel-plugin-transform-class-properties')
+          ],
+          cacheDirectory: true
+        }
+      }]
+    },
+    plugins: plugins,
+    devtool: '#eval-source-map'
+  };
+
+  var bundler = webpack(webpackConfigs);
+
+  bundler.watch({
+    aggregateTimeout: 300,
+    poll: false
+  }, function (error, stats) {
+    if (error) {
+      done(error, null);
+      return;
+    }
+
+    winston.info('\n\n');
+    winston.info('[bundler:compile] Changes ----- %s ----- \n', new Date());
+    winston.info('[bundler:compile] %s', stats.toString({
+      chunks: true, // Makes the build much quieter
+      colors: true
+    }));
+
+    done(null, outputFile, stats);
+  });
+}
+
 OCCProxy.prototype.setWidgetsTranspiler = function (widgetsList, done) {
   var proxyInstance = this;
   var es6WidgetsList = widgetsList.filter(function (widgetObject) {

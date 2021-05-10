@@ -1153,16 +1153,31 @@ routes.extraRoutes = function () {
         return;
       }
     }
+    var handleJsFileTranspilation = function (source) {
+      var extension = path.extname(source);
+      var isJsFile = /\.js$/i.test(extension);
+      return new Promise(function (resolve, reject) {
+        if(!isJsFile) {
+          resolve (source)
+        } else {
+          proxyInstance.proxyServer.transpileExtraRoute(source, function (err, fileCompiledPath) {
+            resolve(fileCompiledPath)
+          });
+        }
+      });
+    };
 
-    if(route.filePath && !route.process) {
-      proxyOptions.serveFile = route.filePath;
-    }
-
-    if(!route.filePath && proxyOptions.type === 'replace' || (route.filePath && route.process)) {
-      proxyOptions.type = 'string';
-    }
-
-    proxyInstance.proxyServer.setRoute(proxyOptions);
+    handleJsFileTranspilation(route.filePath).then((source) => {
+      if(source && !route.process) {
+        proxyOptions.serveFile = source;
+      }
+  
+      if(!source && proxyOptions.type === 'replace' || (source && route.process)) {
+        proxyOptions.type = 'string';
+      }
+  
+      proxyInstance.proxyServer.setRoute(proxyOptions);
+    });
   });
 };
 

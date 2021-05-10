@@ -1153,14 +1153,18 @@ routes.extraRoutes = function () {
         return;
       }
     }
+
     var handleJsFileTranspilation = function (source) {
       var extension = path.extname(source);
       var isJsFile = /\.js$/i.test(extension);
-      return new Promise(function (resolve, reject) {
-        if(!isJsFile) {
+      var transpileOption = route.transpile || false;
+      var shouldTranspile = isJsFile && transpileOption;
+
+      return new Promise(function (resolve) {
+        if(!shouldTranspile) {
           resolve (source)
         } else {
-          proxyInstance.proxyServer.transpileExtraRoute(source, function (err, fileCompiledPath) {
+          proxyInstance.proxyServer.transpileExtraRoute(source, function (_err, fileCompiledPath) {
             resolve(fileCompiledPath)
           });
         }
@@ -1171,11 +1175,11 @@ routes.extraRoutes = function () {
       if(source && !route.process) {
         proxyOptions.serveFile = source;
       }
-  
+
       if(!source && proxyOptions.type === 'replace' || (source && route.process)) {
         proxyOptions.type = 'string';
       }
-  
+
       proxyInstance.proxyServer.setRoute(proxyOptions);
     });
   });

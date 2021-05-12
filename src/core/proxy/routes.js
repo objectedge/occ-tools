@@ -18,6 +18,7 @@ var winston = require('winston');
 var config = require('../config');
 var helpers = require('./helpers');
 var ExtensionCore = require('../extension');
+var mime = require('mime');
 
 /**
  * Configurations
@@ -1154,15 +1155,45 @@ routes.extraRoutes = function () {
       }
     }
 
-    if(route.filePath && !route.process) {
-      proxyOptions.serveFile = route.filePath;
-    }
+    var handleJsFileTranspilation = function (source) {
+      var extension = path.extname(source);
+      var isJsFile = /\.js$/i.test(extension);
+      var fileSettings = proxyInstance.proxyServer.getFileSetting(source);
+      var transpileOption = route.transpile || fileSettings.transpile || false;
+      var shouldTranspile = isJsFile && transpileOption;
 
-    if(!route.filePath && proxyOptions.type === 'replace' || (route.filePath && route.process)) {
-      proxyOptions.type = 'string';
-    }
+      return new Promise(function (resolve) {
+        if(!shouldTranspile) {
+          resolve (source)
+        } else {
+          proxyInstance.proxyServer.transpileExtraRoute({ source, fileSettings }, function (_err, fileCompiledPath) {
+            resolve(fileCompiledPath)
+          });
+        }
+      });
+    };
 
-    proxyInstance.proxyServer.setRoute(proxyOptions);
+    handleJsFileTranspilation(route.filePath).then((source) => {
+      if(source && !route.process) {
+        proxyOptions.serveFile = source;
+      }
+
+      if(!source && proxyOptions.type === 'replace' || (source && route.process)) {
+        proxyOptions.type = 'string';
+      }
+
+      if(!route.headers || (route.headers && !route.headers['content-type'])) {
+        var mimeType = mime.getType(source);
+
+        if(mimeType) {
+          proxyOptions.headerResponse = {
+            'content-type': mimeType
+          };
+        }
+      }
+
+      proxyInstance.proxyServer.setRoute(proxyOptions);
+    });
   });
 };
 

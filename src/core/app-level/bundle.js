@@ -7,6 +7,8 @@ var UglifyJS = require('uglify-js');
 var webpack = require('webpack');
 var winston = require('winston');
 var occConfigs = require('../config');
+var projectSettingsAppLevel = occConfigs.projectSettings['app-level-config'] || {};
+
 var util = require('util');
 
 /**
@@ -41,6 +43,22 @@ function createJsBundleIndexFile(filesList) {
   return appLevelIndexTemplate;
 }
 
+function getTopBannerFileContent() {
+  if(projectSettingsAppLevel['file-top-banner']) {
+    var topBannerFilePath = projectSettingsAppLevel['file-top-banner'];
+
+    try {
+      var topBannerFile = UglifyJS.minify(path.join(occConfigs.dir.project_base, topBannerFilePath));
+      return topBannerFile ? topBannerFile.code : '';
+    } catch(error) {
+      winston.error('The "topBanner" for app level has not been found ' + topBannerFilePath);
+      return '';
+    }
+  }
+
+  return '';
+}
+
 /**
  * Bundle all JS from an app level extension
  * @param  {Array}   options Generate options
@@ -58,6 +76,18 @@ function jsBundle(options, done) {
     output: {
       comments: false
     }
+  }));
+
+  var topBannerFile = getTopBannerFileContent();
+  if(topBannerFile) {
+    topBannerFile = topBannerFile.replace(/__ASSETS_VERSION__/g, occConfigs.assetsVersion);
+    plugins.push(new webpack.BannerPlugin(topBannerFile, {
+      raw: true
+    }));
+  }
+
+  plugins.push(new webpack.DefinePlugin({
+    __ASSETS_VERSION__: `"${occConfigs.assetsVersion}"`
   }));
 
   var entryFile = path.join(options.dir, options.name, 'index.js');

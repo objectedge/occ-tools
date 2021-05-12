@@ -2,6 +2,9 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.43] - 2021-05-12]
+- Minor fix in the files upload command
+
 ## [2.0.0-beta.42] - 2021-05-12]
 ### Added
 - Option to append a "banner" in the app-level, in that way, we can define some global JS and configure requirejs aliases properly.

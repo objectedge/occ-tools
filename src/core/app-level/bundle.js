@@ -87,7 +87,7 @@ function jsBundle(options, done) {
   }
 
   plugins.push(new webpack.DefinePlugin({
-    __ASSETS_VERSION__: occConfigs.assetsVersion
+    __ASSETS_VERSION__: `"${occConfigs.assetsVersion}"`
   }));
 
   var entryFile = path.join(options.dir, options.name, 'index.js');

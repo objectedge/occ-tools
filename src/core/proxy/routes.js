@@ -18,6 +18,7 @@ var winston = require('winston');
 var config = require('../config');
 var helpers = require('./helpers');
 var ExtensionCore = require('../extension');
+var mime = require('mime');
 
 /**
  * Configurations
@@ -1157,14 +1158,15 @@ routes.extraRoutes = function () {
     var handleJsFileTranspilation = function (source) {
       var extension = path.extname(source);
       var isJsFile = /\.js$/i.test(extension);
-      var transpileOption = route.transpile || false;
+      var fileSettings = proxyInstance.proxyServer.getFileSetting(source);
+      var transpileOption = route.transpile || fileSettings.transpile || false;
       var shouldTranspile = isJsFile && transpileOption;
 
       return new Promise(function (resolve) {
         if(!shouldTranspile) {
           resolve (source)
         } else {
-          proxyInstance.proxyServer.transpileExtraRoute(source, function (_err, fileCompiledPath) {
+          proxyInstance.proxyServer.transpileExtraRoute({ source, fileSettings }, function (_err, fileCompiledPath) {
             resolve(fileCompiledPath)
           });
         }
@@ -1178,6 +1180,16 @@ routes.extraRoutes = function () {
 
       if(!source && proxyOptions.type === 'replace' || (source && route.process)) {
         proxyOptions.type = 'string';
+      }
+
+      if(!route.headers || (route.headers && !route.headers['content-type'])) {
+        var mimeType = mime.getType(source);
+
+        if(mimeType) {
+          proxyOptions.headerResponse = {
+            'content-type': mimeType
+          };
+        }
       }
 
       proxyInstance.proxyServer.setRoute(proxyOptions);

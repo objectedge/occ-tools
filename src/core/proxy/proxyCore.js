@@ -13,6 +13,8 @@ var execSync = require('child_process').execSync;
 
 var config = require('../config');
 var projectSettingsAppLevel = config.projectSettings['app-level-config'] || {};
+var projectSettingsFiles = config.projectSettings['files-config'] || [];
+
 var Bundler = require('../bundler');
 
 //We're requiring our own cheerio because hoxy aren't loading
@@ -270,7 +272,7 @@ function createJsBundleIndexFile(filesList) {
   return appLevelIndexTemplate;
 }
 
-function getTopBannerFileContent() {
+OCCProxy.prototype.getTopBannerFileContent = function () {
   if(projectSettingsAppLevel['file-top-banner']) {
     var topBannerFilePath = projectSettingsAppLevel['file-top-banner'];
 
@@ -284,6 +286,10 @@ function getTopBannerFileContent() {
   }
 
   return '';
+}
+
+OCCProxy.prototype.getFileSetting = function (source) {
+  return projectSettingsFiles.find(file => path.join(config.dir.project_root, file.path) === source) || {};
 }
 
 function bundleAppLevel(appLevelPath, appLevelName, done) {
@@ -305,7 +311,7 @@ function bundleAppLevel(appLevelPath, appLevelName, done) {
   var outputPath = path.join(config.dir.project_root, '.occ-transpiled', 'app-level', appLevelName);
   var outputFile = path.join(outputPath, appLevelName + '.js');
 
-  var topBannerFile = getTopBannerFileContent();
+  var topBannerFile = proxyInstance.getTopBannerFileContent();
   if(topBannerFile) {
     topBannerFile = topBannerFile.replace(/__ASSETS_VERSION__/g, config.assetsVersion);
     plugins.push(new webpack.BannerPlugin(topBannerFile, {
@@ -314,7 +320,7 @@ function bundleAppLevel(appLevelPath, appLevelName, done) {
   }
 
   plugins.push(new webpack.DefinePlugin({
-    __ASSETS_VERSION__: config.assetsVersion
+    __ASSETS_VERSION__: `"${config.assetsVersion}"`
   }));
 
   var webpackConfigs = {
@@ -377,6 +383,7 @@ function bundleAppLevel(appLevelPath, appLevelName, done) {
 }
 
 OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, done) {
+  var proxyInstance = this;
   var filesList = [];
   var outputPath = path.join(config.dir.project_root, '.occ-transpiled', 'app-level', appLevelName);
   var appLevelEntry = path.join(outputPath, 'index.js');
@@ -432,19 +439,21 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
         return;
       }
 
-      bundleAppLevel(outputPath, appLevelName, done);
+      bundleAppLevel.call(proxyInstance, outputPath, appLevelName, done);
     });
   });
 };
 
 /**
 * Bundle JS file
-* @param  {String}   source File path to bundle
+* @param {Object} params options
+* @param {String} params.source main source
+* @param {Object} params.fileSettings the settings for the file
 * @param  {Function} done   on done the process
 */
-OCCProxy.prototype.transpileExtraRoute = function (source, done) {
+OCCProxy.prototype.transpileExtraRoute = function ({ source, fileSettings }, done) {
   var occToolsModulesPath = path.join(config.occToolsPath, '..', 'node_modules');
-  
+
   var plugins = [];
   plugins.push(new webpack.dependencies.LabeledModulesPlugin());
   plugins.push(new webpack.optimize.UglifyJsPlugin({
@@ -460,7 +469,11 @@ OCCProxy.prototype.transpileExtraRoute = function (source, done) {
   var fileName = path.basename(entryFile);
   var outputPath = path.join(config.dir.project_root, '.occ-transpiled', 'files');
   var outputFile = path.join(outputPath, fileName);
-  
+  var libraryTarget = fileSettings.libraryTarget ? fileSettings.libraryTarget : 'amd';
+
+  plugins.push(new webpack.DefinePlugin({
+    __ASSETS_VERSION__: `"${config.assetsVersion}"`
+  }));
 
   var webpackConfigs = {
     resolveLoader: {
@@ -472,7 +485,7 @@ OCCProxy.prototype.transpileExtraRoute = function (source, done) {
     output: {
       path: outputPath,
       filename: fileName,
-      libraryTarget: 'amd'
+      libraryTarget: libraryTarget
     },
     externals: [
       /^((\/file)|(\/oe-files)|(\/ccstorex?)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/
@@ -741,6 +754,10 @@ OCCProxy.prototype.setRoute = function (options) {
     //Only process the request if it has a success code
     if(options.onlySuccessCode && !proxyInstance.isSuccessCode(resp.statusCode)) {
       return;
+    }
+
+    if(options.headerResponse) {
+      resp.headers = options.headerResponse;
     }
 
     //Fixing the problem about HPE_UNEXPECTED_CONTENT_LENGTH

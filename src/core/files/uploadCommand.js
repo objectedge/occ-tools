@@ -103,7 +103,9 @@ function minifyJSONFile(tempFileDir, tempFilePath, source) {
 /**
  * Generate temporary minified file and return its path
  *
- * @param {String} source file path
+ * @param {Object} params options
+ * @param {String} params.source main source
+ * @param {Object} params.fileSettings the settings for the file
  * @returns {String} temp file path
  */
 function generateBundleTempFile({ source, fileSettings }, callback) {

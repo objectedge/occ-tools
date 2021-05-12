@@ -161,7 +161,7 @@ function doFileUpload(source, destination, settings, token, callback) {
       var fileSettings = getFileSetting(source);
       var shouldMinify = !settings.no_minify && /(\.js|\.css)/.test(extension);
 
-      if(fileSettings.transpile !== 'undefined') {
+      if(typeof fileSettings.transpile !== 'undefined') {
         shouldMinify = fileSettings.transpile;
       }
 

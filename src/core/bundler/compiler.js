@@ -148,6 +148,10 @@ Compiler.prototype.defineCompiler = function (done) {
     }
   }));
 
+  plugins.push(new webpack.DefinePlugin({
+    __ASSETS_VERSION__: appConfig.assetsVersion
+  }));
+
   var entries = {};
 
   self.configs.widgetsList.forEach(function (widgetObject) {

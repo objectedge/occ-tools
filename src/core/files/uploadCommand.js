@@ -9,6 +9,7 @@ var Glob = require('glob').Glob;
 var webpack = require('webpack');
 var os = require('os');
 var _config = require('../config');
+var projectSettingsFiles = _config.projectSettings['files-config'] || [];
 var CleanCSS = require('clean-css');
 
 // Number of parallel uploads
@@ -105,7 +106,7 @@ function minifyJSONFile(tempFileDir, tempFilePath, source) {
  * @param {String} source file path
  * @returns {String} temp file path
  */
-function generateBundleTempFile(source, callback) {
+function generateBundleTempFile({ source, fileSettings }, callback) {
   var fileName = path.basename(source);
   var extension = path.extname(source);
   // Generate temp file
@@ -115,6 +116,7 @@ function generateBundleTempFile(source, callback) {
   // Process file
   var isJSON = /\.json/i.test(extension);
   var isCSS = /\.css/i.test(extension);
+  var libraryTarget = fileSettings.libraryTarget ? fileSettings.libraryTarget : 'amd';
 
   if (isJSON) {
     callback(null, minifyJSONFile(tempFileDir, tempFilePath, source))
@@ -130,11 +132,15 @@ function generateBundleTempFile(source, callback) {
       'source': source,
       'dir': tempFileDir,
       'name': fileName,
-      'tempFilePath': tempFilePath
+      'tempFilePath': tempFilePath,
+      'libraryTarget': libraryTarget
     }, callback);
   }
 }
 
+function getFileSetting(source) {
+  return projectSettingsFiles.find(file => path.join(_config.dir.project_root, file.path) === source) || {};
+}
 
 /**
  * Actually upload the file to OCC
@@ -150,10 +156,16 @@ function doFileUpload(source, destination, settings, token, callback) {
     // read the file as base64
     function (callback) {
       var extension = path.extname(source);
+      var fileSettings = getFileSetting(source);
       var shouldMinify = !settings.no_minify && /(\.js|\.css)/.test(extension);
+
+      if(fileSettings.transpile !== 'undefined') {
+        shouldMinify = fileSettings.transpile;
+      }
+
       var target = source;
       if(shouldMinify) {
-        generateBundleTempFile(source, function(error, filePath) {
+        generateBundleTempFile({ source, settings, fileSettings }, function(error, filePath) {
           return callback(error, filePath);
         });
       } else {
@@ -202,6 +214,10 @@ function jsBundle(options, done) {
     }
   }));
 
+  plugins.push(new webpack.DefinePlugin({
+    __ASSETS_VERSION__: `"${_config.assetsVersion}"`
+  }));
+
   var entryFile = options.source;
   var outputFile = options.tempFilePath;
 
@@ -215,7 +231,7 @@ function jsBundle(options, done) {
     output: {
       path: options.dir,
       filename: options.name,
-      libraryTarget: 'amd'
+      libraryTarget: options.libraryTarget
     },
     externals: [
       /^((\/file)|(\/oe-files)|(\/ccstorex?)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/

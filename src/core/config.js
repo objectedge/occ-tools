@@ -11,6 +11,7 @@ if(!configsData) {
   process.exit();
 }
 
+var projectSettings = occToolsConfigsCore.getProjectSettings();
 var currentIP = occToolsConfigsCore.getCurrentIP();
 var baseUrl = configsData.projects.current.url;
 var username = configsData.projects.current.credentials.username;
@@ -113,6 +114,9 @@ if(envDetailsFromProject) {
 var databaseDir = path.join(configsDir, 'database');
 fs.ensureDirSync(databaseDir);
 
+// Defines the assets version, this can be used in the store to control the cache
+var assetsVersion = process.env.ASSETS_VERSION || require(path.join(configsData.projects.current.path, 'package.json')).version;
+
 var _configDescriptor = {
   project_name: configsData.projects.current.name,
   configsDir: configsDir,
@@ -214,7 +218,9 @@ var _configDescriptor = {
     port: 8001
   },
   OCC_DEFAULT_LIMIT: 250,
-  currentIP: currentIP
+  currentIP: currentIP,
+  projectSettings: projectSettings,
+  assetsVersion: assetsVersion
 };
 
 _configDescriptor.github = {

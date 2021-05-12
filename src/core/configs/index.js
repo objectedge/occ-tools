@@ -471,4 +471,32 @@ Configs.prototype.getCurrentIP = function () {
   return addresses.length > 1 ? '127.0.0.1' : addresses[0];
 };
 
+Configs.prototype.getProjectSettings = function (cb) {
+  cb = cb || function () {};
+  var configsJson;
+
+  try {
+    configsJson = fs.readJsonSync(configsFile);
+  } catch(error) {
+    winston.error('Error on trying to load configsJson file');
+    winston.error(error);
+    return false;
+  }
+
+  var projectPath = configsJson.projects.current.path;
+  var occToolsProjectPathFile = path.join(projectPath, 'occ-tools.project.json');
+  var occToolsProjectJson = {};
+
+  try {
+    occToolsProjectJson = fs.readJsonSync(occToolsProjectPathFile);
+  } catch(error) {
+    winston.error('The "occ-tools.project.json" doesn\'t exist at ' + projectPath);
+    return false;
+  }
+
+  var projectSettings = occToolsProjectJson['project-settings'] || {};
+  cb(projectSettings);
+  return projectSettings;
+};
+
 module.exports = Configs;

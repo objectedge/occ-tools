@@ -12,6 +12,7 @@ var Cache = require('./cache');
 var execSync = require('child_process').execSync;
 
 var config = require('../config');
+var projectSettingsAppLevel = config.projectSettings['app-level-config'] || {};
 var Bundler = require('../bundler');
 
 //We're requiring our own cheerio because hoxy aren't loading
@@ -269,6 +270,22 @@ function createJsBundleIndexFile(filesList) {
   return appLevelIndexTemplate;
 }
 
+function getTopBannerFileContent() {
+  if(projectSettingsAppLevel['file-top-banner']) {
+    var topBannerFilePath = projectSettingsAppLevel['file-top-banner'];
+
+    try {
+      var topBannerFile = UglifyJS.minify(path.join(config.dir.project_base, topBannerFilePath));
+      return topBannerFile ? topBannerFile.code : '';
+    } catch(error) {
+      winston.error('The "topBanner" for app level has not been found ' + topBannerFilePath);
+      return '';
+    }
+  }
+
+  return '';
+}
+
 function bundleAppLevel(appLevelPath, appLevelName, done) {
   var proxyInstance = this;
   var occToolsModulesPath = path.join(config.occToolsPath, '..' ,'node_modules');
@@ -287,6 +304,18 @@ function bundleAppLevel(appLevelPath, appLevelName, done) {
   var entryFile = appLevelPath;
   var outputPath = path.join(config.dir.project_root, '.occ-transpiled', 'app-level', appLevelName);
   var outputFile = path.join(outputPath, appLevelName + '.js');
+
+  var topBannerFile = getTopBannerFileContent();
+  if(topBannerFile) {
+    topBannerFile = topBannerFile.replace(/__ASSETS_VERSION__/g, config.assetsVersion);
+    plugins.push(new webpack.BannerPlugin(topBannerFile, {
+      raw: true
+    }));
+  }
+
+  plugins.push(new webpack.DefinePlugin({
+    __ASSETS_VERSION__: config.assetsVersion
+  }));
 
   var webpackConfigs = {
     resolveLoader: {

@@ -220,7 +220,7 @@ var _configDescriptor = {
   OCC_DEFAULT_LIMIT: 250,
   currentIP: currentIP,
   projectSettings: projectSettings,
-  assetsVersion: assetsVersion
+  assetsVersion: `${assetsVersion}${new Date().getTime()}`
 };
 
 _configDescriptor.github = {

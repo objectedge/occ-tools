@@ -11,6 +11,8 @@ var Files = require('../core/files');
 var ResponseFilter = require('../core/response-filter');
 var ServerSideExtension = require('../core/server-side-extension');
 var AppLevel = require('../core/app-level');
+var Element = require('../core/element');
+var TextSnippet = require('../core/text-snippet');
 
 var helpText = 'Download a %s from OCC.\n\n' +
 'Usage:\n' +
@@ -408,8 +410,53 @@ Download.prototype.do_appLevel = function (subcmd, opts, args, callback) {
 };
 
 Download.prototype.do_appLevel.help =
-  'Download the app-level from OCC.\n\n' +
+  'Download app-level from OCC.\n\n' +
   '     {{name}} {{cmd}} <app-level-name> [options] \n\n' +
+  '{{options}}';
+
+
+Download.prototype.do_element = function (subcmd, opts, args, callback) {
+  var elementName = args[0];
+
+  var element = new Element('admin');
+
+  element.on('complete', function (message) {
+    winston.info(message);
+    return callback();
+  });
+
+  element.on('error', function (error) {
+    return callback(error);
+  });
+
+  element.download(elementName, callback);
+};
+
+Download.prototype.do_element.help =
+  'Download global element from OCC.\n\n' +
+  '     {{name}} {{cmd}} <element-name> [options] \n\n' +
+  '{{options}}';
+
+Download.prototype.do_text_snippet = function (subcmd, opts, args, callback) {
+  var locales = args[0];
+
+  var textSnippet = new TextSnippet('admin');
+
+  textSnippet.on('complete', function (message) {
+    winston.info(message);
+    return callback();
+  });
+
+  textSnippet.on('error', function (error) {
+    return callback(error);
+  });
+
+  textSnippet.download(locales, callback);
+};
+
+Download.prototype.do_text_snippet.help =
+  'Download text snippets from OCC.\n\n' +
+  '     {{name}} {{cmd}} <locales> [options] \n\n' +
   '{{options}}';
 
 module.exports = Download;

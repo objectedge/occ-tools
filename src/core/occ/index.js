@@ -28,6 +28,33 @@ OCC.prototype.request = function() {
   _request.apply(this, arguments);
 };
 
+OCC.prototype.promisedRequest = function() {
+  const self = this;
+  const [options] = arguments;
+
+  return new Promise((resolve, reject) => {
+    const callback = (error, body) => {
+      if (error) {
+        reject(error);
+      } else if (
+        body &&
+        (body.errorCode || body.error || parseInt(body.status) >= 400)
+      ) {
+
+        callback(
+          `[${body.status || "500"}] ${
+            body.message || "General error received from OCC."
+          }`
+        );
+      }
+
+      resolve(body);
+    }
+
+    _request.apply(self, [options, callback]);
+  });
+};
+
 /**
  * Publish changes in OCC.
  * @param  {Function} callback The fn to be executed after publishing.

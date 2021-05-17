@@ -158,6 +158,8 @@ var _configDescriptor = {
     name: configsData.projects.current.theme.name,
     id: configsData.projects.current.theme.id
   },
+  locales: configsData.projects.current.locales || ['en'],
+  defaultLocale: configsData.projects.current.defaultLocale || 'en',
   environments: occToolsConfigsCore.getCurrentEnvironments(),
   environment: {
     current: configsData.projects.current.env,

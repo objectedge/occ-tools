@@ -279,6 +279,8 @@ Configs.prototype.setEnv = function (env, cb) {
     configsJson.projects.current.env = env;
     configsJson.projects.current.url = environment.url;
     configsJson.projects.current.theme = theme;
+    configsJson.projects.current.defaultLocale = occToolsProjectJson.defaultLocale || "en";
+    configsJson.projects.current.locales = occToolsProjectJson.locales;
 
     updateConfigs(configsJson, 'Environment', function(error) {
       if(error) {

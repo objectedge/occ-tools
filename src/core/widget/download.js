@@ -41,10 +41,10 @@ function downloadTemplate(widgetInfo, settings, callback) {
  * @param  {Function} callback   The fn to be executed after download.
  */
 function downloadLess(widgetInfo, settings, callback) {
-  var self = this;
+  const self = this;
   winston.info('Downloading LESS for %s...', widgetInfo.item.widgetType);
-  var describeLessPath = util.format('widgets/%s/less', widgetInfo.item.instances[0].id);
-  self._occ.request(describeLessPath, function(err, file) {
+  const url = `widgets/${widgetInfo.item.instances[0].id}/less`;
+  self._occ.request(url, function(err, file) {
     if (err) return callback(err);
     var lessDir = path.join(getWidgetPath(settings, widgetInfo), 'less');
     winston.debug('Writing %s LESS in %s', widgetInfo.item.widgetType, lessDir);
@@ -67,7 +67,7 @@ function downloadAllJs(widgetInfo, settings, callback) {
     if (err) return callback(err);
     async.each(
       data.jsFiles,
-      function (jsFile, callback) {
+      function (jsFile, cb) {
         fs.ensureDir(jsPath, function () {
           self._occ.request(
             {
@@ -75,7 +75,7 @@ function downloadAllJs(widgetInfo, settings, callback) {
               method: 'get',
               download: path.join(jsPath, jsFile.name),
             },
-            callback
+            cb
           );
         });
       },
@@ -193,49 +193,49 @@ function downloadWidget(widgetInfo, globalElementTags, widgetInstances, settings
   }
 
   async.parallel([
-    function(callback) {
-      downloadTemplate.call(self, widgetInfo, settings, callback);
+    function(cb) {
+      downloadTemplate.call(self, widgetInfo, settings, cb);
     },
-    function(callback) {
-      downloadLess.call(self, widgetInfo, settings, callback);
+    function(cb) {
+      downloadLess.call(self, widgetInfo, settings, cb);
     },
-    function(callback) {
-      if (widgetInfo.folder === 'oracle') return callback();
-      downloadAllJs.call(self, widgetInfo, settings, callback);
+    function(cb) {
+      if (widgetInfo.folder === 'oracle') return cb();
+      downloadAllJs.call(self, widgetInfo, settings, cb);
     },
-    function(callback) {
-      writeDescriptor.call(self, widgetInfo, settings, callback);
+    function(cb) {
+      writeDescriptor.call(self, widgetInfo, settings, cb);
     },
-    function(callback) {
-      if (widgetInfo.folder === 'oracle') return callback();
-      downloadLocales.call(self, widgetInfo, settings, callback);
+    function(cb) {
+      if (widgetInfo.folder === 'oracle') return cb();
+      downloadLocales.call(self, widgetInfo, settings, cb);
     },
-    function(callback) {
-      if (widgetInfo.folder === 'oracle') return callback();
-      downloadConfig.call(self, widgetInfo, settings, callback);
+    function(cb) {
+      if (widgetInfo.folder === 'oracle') return cb();
+      downloadConfig.call(self, widgetInfo, settings, cb);
     },
-    function(callback) {
-      if (widgetInfo.folder === 'oracle') return callback();
-      downloadWidgetElements.call(self, widgetInfo, globalElementTags, widgetInstances, settings, callback);
+    function(cb) {
+      if (widgetInfo.folder === 'oracle') return cb();
+      downloadWidgetElements.call(self, widgetInfo, globalElementTags, widgetInstances, settings, cb);
     }
   ], callback);
 }
 
 /**
  * Download the list of widgets passed by argument.
- * @param  {Array}   widgetsInfo The list of widgets info received from OCC.
+ * @param  {Array}   widgets The list of widgets info received from OCC.
  * @param  {Function} callback    The fn to be executed after download.
  */
-function downloadWidgets(widgetsInfo, globalElementTags, widgetInstances, settings, callback) {
+function downloadWidgets(widgets, globalElementTags, widgetInstances, settings, callback) {
   var self = this;
-  var widgetsCount = widgetsInfo.length;
+  var widgetsCount = widgets.length;
   var currentCount = 0;
-  var dw = function(widgetInfo, callback) {
+  var dw = function(widgetInfo, cb) {
     winston.info('Widget %d of %d', ++currentCount, widgetsCount);
-    downloadWidget.call(self, widgetInfo, globalElementTags, widgetInstances, settings, callback);
+    downloadWidget.call(self, widgetInfo, globalElementTags, widgetInstances, settings, cb);
   };
 
-  async.each(widgetsInfo, dw, callback);
+  async.each(widgets, dw, callback);
 }
 
 const fetchWidgetInstances = function(widgets, globalElementTags, callback) {
@@ -271,8 +271,8 @@ module.exports = function (widgetId, settings, callback) {
     fetchWidgetsInfo.bind(self),
     fetchGlobalElements.bind(self),
     fetchWidgetInstances.bind(self),
-    function (widgetsInfo, globalElementTags, widgetInstances, callback) {
-      downloadWidgets.call(self, widgetsInfo, globalElementTags, widgetInstances, settings, callback);
+    function (widgets, globalElementTags, widgetInstances, cb) {
+      downloadWidgets.call(self, widgets, globalElementTags, widgetInstances, settings, cb);
     }
   ], callback);
 };

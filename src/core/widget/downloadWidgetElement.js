@@ -1,30 +1,37 @@
-'use strict';
+"use strict";
 
-var winston = require('winston');
-var path = require('path');
-var fs = require('fs-extra');
+var winston = require("winston");
+var path = require("path");
+var fs = require("fs-extra");
 
-var _configs = require('../config');
+var _configs = require("../config");
 
 function getWidgetPath(settings, widgetInfo) {
   var folder = settings && settings.dest ? settings.dest : widgetInfo.folder;
-  return path.join(_configs.dir.project_root, 'widgets', folder, widgetInfo.item.widgetType);
+  return path.join(
+    _configs.dir.project_root,
+    "widgets",
+    folder,
+    widgetInfo.item.widgetType
+  );
 }
 
 const fetchGlobalElements = function (widgets, callback) {
   var self = this;
   winston.info("Fetching global elements...");
 
-  self._occ.request("elements?globals=true", function (err, response) {
-    if (err) return callback(err);
+  self._occ
+    .promisedRequest("elements?globals=true")
+    .then((response) => {
+      const globalElementTags = new Set();
+      response.items.forEach((element) => {
+        !globalElementTags.has(element.tag) &&
+          globalElementTags.add(element.tag);
+      });
 
-    const globalElementTags = new Set();
-    response.items.forEach((element) => {
-      !globalElementTags.has(element.tag) && globalElementTags.add(element.tag);
-    });
-
-    callback(null, widgets, globalElementTags);
-  });
+      callback(null, widgets, globalElementTags);
+    })
+    .catch((e) => callback(e));
 };
 
 function canDownloadElement(elementType) {
@@ -38,39 +45,41 @@ const donwloadElementFile = (occ, type, widgetId, elementTag, elementsPath) => {
       api: `widgetDescriptors/${widgetId}/element/${elementTag}/${type}`,
       method: "get",
       headers: {
-        "X-CCAsset-Language": "en",
+        "X-CCAsset-Language": _configs.defaultLocale,
       },
     };
-    occ.request(options, (err, response) => {
-      if (err) return reject(err);
+    occ.promisedRequest(options)
+      .then((response) => {
+        if (!response) resolve();
 
-      if (response) {
-        let filename = "";
-        switch (type) {
-          case "javascript":
-            filename = path.join("js", "element.js");
-            break;
-          case "template":
-            filename = path.join("templates", "template.txt");
-            break;
-          case "metadata":
-            filename = "element.json";
-            break;
-        }
-        var filePath = path.join(elementsPath, elementTag, filename);
         fs.outputFileSync(
-          filePath,
+          getElementPath(type, elementsPath, elementTag),
           type == "metadata"
             ? processElementMetadata(response)
             : response.code[type]
         );
         resolve();
-      } else {
-        resolve();
-      }
-    });
+      })
+      .catch((e) => reject(e));
   });
 };
+
+function getElementPath(type, elementsPath, elementTag) {
+  let filename = "";
+  switch (type) {
+    case "javascript":
+      filename = path.join("js", "element.js");
+      break;
+    case "template":
+      filename = path.join("templates", "template.txt");
+      break;
+    case "metadata":
+      filename = "element.json";
+      break;
+  }
+
+  return path.join(elementsPath, elementTag, filename);
+}
 
 function processElementMetadata(response) {
   let metadata = Object.assign({}, response);

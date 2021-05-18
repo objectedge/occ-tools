@@ -266,7 +266,7 @@ Upload.prototype.do_appLevel = function(subcmd, opts, args, callback) {
   var appLevelNames = args;
   
   if (!appLevelNames.length) {
-    appLevelNames = ['oeCore', 'oeLibs', 'msidna-components'];
+    appLevelNames = ['oeCore', 'msidna-components'];
   }
 
   var appLevel = new AppLevel('admin');
@@ -286,7 +286,7 @@ Upload.prototype.do_appLevel = function(subcmd, opts, args, callback) {
 
 Upload.prototype.do_appLevel.help = (
   'Upload an app-level to OCC.\n' +
-  'App-level name is optional. If name is not specified it will upload oeCore, oeLibs and msidna-components\n\n' +
+  'App-level name is optional. If name is not specified it will upload oeCore and msidna-components\n\n' +
   'Usage:\n' +
   '     {{name}} {{cmd}} <stack-name> [options] \n\n' +
   '{{options}}'

@@ -9,7 +9,7 @@ var bundleAppLevel = require('../app-level/bundle');
 var _config = require('../config');
 
 
-module.exports = function(appLevel, settings, callback) {
+module.exports = function(appLevelNames, settings, callback) {
   var self = this;
 
   var uploadAppLevel = function(outputFile, outputFileName, outputFilePath, entryFilePath, stats, callback) {
@@ -20,7 +20,7 @@ module.exports = function(appLevel, settings, callback) {
       },
       function(fileData, callback) {
         var options = {
-          api: util.format('/applicationJavaScript/%s/', util.format('%s.js', appLevel)),
+          api: util.format('/applicationJavaScript/%s/', outputFileName),
           method: 'put',
           body: {
             source: fileData
@@ -40,13 +40,16 @@ module.exports = function(appLevel, settings, callback) {
     });
   };
 
-  winston.info('Uploading app-level %s', appLevel);
-  async.waterfall([
-    bundleAppLevel.bundle.bind(this, {
-      'dir': path.join(_config.dir.project_root, 'app-level'),
-      'name': appLevel
-    }),
-    uploadAppLevel,
-    bundleAppLevel.clear
-  ], callback);
+
+  async.eachSeries(appLevelNames, function(appLevel, callback) {
+    winston.info('Uploading app-level %s', appLevel);
+    async.waterfall([
+      bundleAppLevel.bundle.bind(this, {
+        'dir': path.join(_config.dir.project_root, 'app-level'),
+        'name': appLevel
+      }),
+      uploadAppLevel,
+      bundleAppLevel.clear
+    ], callback);
+  }, callback)
 };

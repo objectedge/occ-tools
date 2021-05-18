@@ -318,7 +318,10 @@ Upload.prototype.do_files = function(subcmd, opts, args, callback) {
     return callback(error);
   });
 
-  files.uploadCommand(filePath, opts, callback);
+  var self = this;
+  files.uploadCommand(filePath, opts, function(cb) {
+    self.do_appLevel('appLevel', {}, [], cb);
+  });
 };
 
 Upload.prototype.do_files.help = (

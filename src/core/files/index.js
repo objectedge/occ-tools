@@ -51,10 +51,14 @@ Files.prototype.upload = function (srcPath, destPath) {
  * @param {String} filePath a valid glob pattern
  * @param {Object} options command options
  */
-Files.prototype.uploadCommand = function (filePath, options) {
+Files.prototype.uploadCommand = function (filePath, options, cb) {
   var self = this;
   _uploadCommand.call(this, filePath, options, function (err) {
-    err ? self.emit('error', err) : self.emit('complete', 'File upload process completed.');
+    if(err) self.emit('error', err);
+    cb(function(error) {
+      error ? self.emit('error', error) : self.emit('complete', 'File upload process completed.');
+    });
+    
   });
 };
 

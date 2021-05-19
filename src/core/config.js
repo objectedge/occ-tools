@@ -222,9 +222,6 @@ var _configDescriptor = {
 };
 
 _configDescriptor.github = {
-  username: configsData.github.username,
-  password: configsData.github.password,
-  type: configsData.github.type,
   token: configsData.github.token
 };
 

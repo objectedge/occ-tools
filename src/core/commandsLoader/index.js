@@ -106,7 +106,7 @@ module.exports = function (done) {
     fs.accessSync(occToolsConfigPath, fs.F_OK);
     var config = require('../config');
 
-    if(!config.github.type) {
+    if(!config.github.token) {
       winston.error('You don\'t have any github configuration. Running set-github...');
       occToolsConfigs.do_set_github(null, null, null, initLoading);
       return;

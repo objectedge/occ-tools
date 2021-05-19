@@ -13,7 +13,9 @@ function getRemoteContent(options, callback) {
     contentOptions.ref = options.ref;
   }
 
-  _github.repos.getContent(contentOptions, callback);
+  _github.repos.getContent(contentOptions)
+    .then(content => callback(null, content))
+    .catch(e => callback(e));
 }
 
 module.exports = function (github, options, callback) {

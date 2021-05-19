@@ -81,10 +81,7 @@ Configs.prototype.setGithubCredentials = function (options, cb) {
       return;
     }
 
-    configsJson.github.username = options.username;
-    configsJson.github.password = options.password;
     configsJson.github.token = options.token;
-    configsJson.github.type = options.type;
     updateConfigs(configsJson, 'Github', cb);
   });
 };

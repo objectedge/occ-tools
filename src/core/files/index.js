@@ -55,6 +55,7 @@ Files.prototype.uploadCommand = function (filePath, options, cb) {
   var self = this;
   _uploadCommand.call(this, filePath, options, function (err) {
     if(err) self.emit('error', err);
+    if(!cb) self.emit('complete', 'File upload process completed.');
     cb(function(error) {
       error ? self.emit('error', error) : self.emit('complete', 'File upload process completed.');
     });

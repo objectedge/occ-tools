@@ -1,5 +1,9 @@
 var util = require('util');
 var fs = require('fs-extra');
+var glob = require('glob');
+var path = require('path');
+
+
 var Cmdln = require('cmdln').Cmdln;
 var winston = require('winston');
 
@@ -12,6 +16,8 @@ var AppLevel = require('../core/app-level');
 var Files = require('../core/files');
 var ServerSideExtension = require('../core/server-side-extension');
 var ResponseFilter = require('../core/response-filter');
+
+var config = require('../core/config');
 
 function Upload() {
   Cmdln.call(this, {
@@ -264,9 +270,10 @@ Upload.prototype.do_stack.help = (
 
 Upload.prototype.do_appLevel = function(subcmd, opts, args, callback) {
   var appLevelNames = args;
-  
+  var appLevelBasePath = path.join(config.dir.project_root, 'app-level');
+
   if (!appLevelNames.length) {
-    appLevelNames = ['oeCore', 'msidna-components'];
+    appLevelNames = glob.sync(appLevelBasePath + '/*').map(url => url.split('/').pop());
   }
 
   var appLevel = new AppLevel('admin');

@@ -13,6 +13,7 @@ var ServerSideExtension = require('../core/server-side-extension');
 var AppLevel = require('../core/app-level');
 var Element = require('../core/element');
 var TextSnippet = require('../core/text-snippet');
+var Type = require('../core/type');
 
 var helpText = 'Download a %s from OCC.\n\n' +
 'Usage:\n' +
@@ -458,5 +459,34 @@ Download.prototype.do_text_snippet.help =
   'Download text snippets from OCC.\n\n' +
   '     {{name}} {{cmd}} <locales> [options] \n\n' +
   '{{options}}';
+
+Download.prototype.do_type = function (subcmd, opts, args, callback) {
+  const [mainType, subType]  = args;
+  const type = new Type('admin');
+
+  if (!type.isMainTypeAllowed(mainType)) {
+    return callback(`Type not allowed. Allowed types are order, shopper, product, item`);
+  }
+
+  type.isSubTypeAllowed(mainType, subType)
+    .then(isAllowed => {
+      if (!isAllowed) {
+        return callback(`Sub type does not exist`);
+      }
+
+      type.download(mainType, subType)
+        .then(() => {
+          winston.info('Download types finished!');
+          callback();
+        }).catch(e => callback(e));
+    })
+    .catch(e => callback(e));
+};
+
+Download.prototype.do_type.help =
+  'Download types from OCC.\n\n' +
+  '     {{name}} {{cmd}} <type> <subtype> \n\n' +
+  '{{options}}';
+
 
 module.exports = Download;

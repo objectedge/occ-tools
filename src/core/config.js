@@ -147,6 +147,7 @@ var _configDescriptor = {
     search_root: path.join(configsData.projects.current.path, 'search'),
     server_side_root: path.join(configsData.projects.current.path, 'server-side-extensions'),
     storefront_dir_name: storefrontDir,
+    types_root: path.join(configsData.projects.current.path, 'types'),
     mocks: path.join(absoluteStorefrontDir, mocksDirName),
     instanceDefinitions: instanceDefinitionsDir,
     occToolsProject: path.join(configsData.projects.current.path, 'occ-tools.project.json'),

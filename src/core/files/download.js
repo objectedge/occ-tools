@@ -12,7 +12,7 @@ var PARALLEL_DOWNLOADS = 8;
 
 /**
  * Recursively download all files.
- * 
+ *
  * @param {String} folder the OCC folder to download files
  * @param {Number} offset of the array to be added to final array
  * @param {String} pattern the glob pattern
@@ -56,14 +56,12 @@ function listAndDownloadFiles(folder, offset, pattern, callback) {
       function (file, cb) {
         winston.info('Downloading file %s...', file.path);
         var filePath = path.join(_configs.dir.project_root, 'files', file.path);
-        // handle directory creation
         fs.ensureDir(path.dirname(filePath), function () {
           // download the file from OCC
           self._occ.request({
             url: file.url,
             method: 'get',
-            body: true,
-            download: filePath
+            download: filePath,
           }, cb);
         });
       }, function (error) {

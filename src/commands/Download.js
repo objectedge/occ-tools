@@ -10,6 +10,10 @@ var Stack = require('../core/stack');
 var Files = require('../core/files');
 var ResponseFilter = require('../core/response-filter');
 var ServerSideExtension = require('../core/server-side-extension');
+var AppLevel = require('../core/app-level');
+var Element = require('../core/element');
+var TextSnippet = require('../core/text-snippet');
+var Type = require('../core/type');
 
 var helpText = 'Download a %s from OCC.\n\n' +
 'Usage:\n' +
@@ -189,10 +193,6 @@ Download.prototype.do_email = function(subcmd, opts, args, callback) {
     'siteId': opts.site || 'siteUS'
   };
 
-  if (!emailId) {
-    return callback('Email ID not specified.');
-  }
-
   var email = new Email('admin');
 
   email.on('complete', function(message) {
@@ -264,7 +264,7 @@ Download.prototype.do_files = function(subcmd, opts, args, callback) {
     ));
   }
 
-  var files = new Files('admin');
+  var files = new Files('adminUI');
 
   files.on('complete', function(message) {
     winston.info(message);
@@ -392,5 +392,101 @@ Download.prototype.do_sse.help = (
   'Usage:\n' +
   '     {{name}} {{cmd}} <sse-name> '
 );
+
+Download.prototype.do_appLevel = function (subcmd, opts, args, callback) {
+  var appLevelName = args[0];
+
+  var appLevel = new AppLevel('admin');
+
+  appLevel.on('complete', function (message) {
+    winston.info(message);
+    return callback();
+  });
+
+  appLevel.on('error', function (error) {
+    return callback(error);
+  });
+
+  appLevel.download(appLevelName, callback);
+};
+
+Download.prototype.do_appLevel.help =
+  'Download app-level from OCC.\n\n' +
+  '     {{name}} {{cmd}} <app-level-name> [options] \n\n' +
+  '{{options}}';
+
+
+Download.prototype.do_element = function (subcmd, opts, args, callback) {
+  var elementName = args[0];
+
+  var element = new Element('admin');
+
+  element.on('complete', function (message) {
+    winston.info(message);
+    return callback();
+  });
+
+  element.on('error', function (error) {
+    return callback(error);
+  });
+
+  element.download(elementName, callback);
+};
+
+Download.prototype.do_element.help =
+  'Download global element from OCC.\n\n' +
+  '     {{name}} {{cmd}} <element-name> [options] \n\n' +
+  '{{options}}';
+
+Download.prototype.do_text_snippet = function (subcmd, opts, args, callback) {
+  var locales = args[0];
+
+  var textSnippet = new TextSnippet('admin');
+
+  textSnippet.on('complete', function (message) {
+    winston.info(message);
+    return callback();
+  });
+
+  textSnippet.on('error', function (error) {
+    return callback(error);
+  });
+
+  textSnippet.download(locales, callback);
+};
+
+Download.prototype.do_text_snippet.help =
+  'Download text snippets from OCC.\n\n' +
+  '     {{name}} {{cmd}} <locales> [options] \n\n' +
+  '{{options}}';
+
+Download.prototype.do_type = function (subcmd, opts, args, callback) {
+  const [mainType, subType]  = args;
+  const type = new Type('admin');
+
+  if (!type.isMainTypeAllowed(mainType)) {
+    return callback(`Type not allowed. Allowed types are order, shopper, product, item`);
+  }
+
+  type.isSubTypeAllowed(mainType, subType)
+    .then(isAllowed => {
+      if (!isAllowed) {
+        return callback(`Sub type does not exist`);
+      }
+
+      type.download(mainType, subType)
+        .then(() => {
+          winston.info('Download types finished!');
+          callback();
+        }).catch(e => callback(e));
+    })
+    .catch(e => callback(e));
+};
+
+Download.prototype.do_type.help =
+  'Download types from OCC.\n\n' +
+  '     {{name}} {{cmd}} <type> <subtype> \n\n' +
+  '{{options}}';
+
 
 module.exports = Download;

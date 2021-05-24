@@ -7,6 +7,7 @@ var OCC = require('../occ');
 var Auth = require('../auth');
 
 var _generate = require('./generate');
+var _download = require('./download');
 
 var _settings = {
   env: 'adminUI',
@@ -38,6 +39,18 @@ Element.prototype.generate = function(name, options) {
   var self = this;
   _generate.call(this, name, options, function(err) {
     err ? self.emit('error', err) : self.emit('complete', 'Element generation process completed.');
+  });
+};
+
+/**
+ * Download elements from OCC.
+ *
+ * @param  {Object} options The options object.
+ */
+Element.prototype.download = function (options) {
+  var self = this;
+  _download.call(this, options, function (err) {
+    err ? self.emit('error', err) : self.emit('complete', 'Elements downloaded.');
   });
 };
 

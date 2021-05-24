@@ -1,7 +1,7 @@
 require('./polyfills');
 
-var bugsnag = require('@bugsnag/js');
-bugsnag('e75bb42c357b87264fd4e8d1c2866207');
+// var bugsnag = require('@bugsnag/js');
+// bugsnag('e75bb42c357b87264fd4e8d1c2866207');
 
 var winston = require('winston');
 winston.remove(winston.transports.Console);

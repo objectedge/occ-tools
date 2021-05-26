@@ -32,12 +32,12 @@ AppLevel.prototype.generate = function(name, options) {
 
 /**
  * Upload app level to OCC.
- * @param  {String} name    The app level name.
+ * @param  {String} names    The app level names.
  * @param  {Object} options The options object.
  */
-AppLevel.prototype.upload = function(name, options) {
+AppLevel.prototype.upload = function(names, options) {
   var self = this;
-  _upload.call(this, name, options, function(err) {
+  _upload.call(this, names, options, function(err) {
     err ? self.emit('error', err) : self.emit('complete', 'App-level upload process completed.');
   });
 };

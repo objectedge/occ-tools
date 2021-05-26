@@ -2,6 +2,12 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.46] - 2021-05-26]
+
+### Added
+
+- upload all appLevels by "occ-tools upload appLevel" command.
+- trigger uploading appLevels after uploading file to invalidate cache and version.
 
 ## [2.0.0-beta.45] - 2021-05-25]
 
@@ -14,6 +20,7 @@ This project must adhere to [this](https://github.com/olivierlacan/keep-a-change
 ### Fixed
 
 - add timeStamp to "ASSETS_VERSION". As we faced some problems with cache, timestamp will be added once someone deploy oeCore.
+
 ## [2.0.0-beta.43] - 2021-05-12]
 
 ### Fixed

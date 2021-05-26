@@ -1,5 +1,9 @@
 var util = require('util');
 var fs = require('fs-extra');
+var glob = require('glob');
+var path = require('path');
+
+
 var Cmdln = require('cmdln').Cmdln;
 var winston = require('winston');
 
@@ -12,6 +16,8 @@ var AppLevel = require('../core/app-level');
 var Files = require('../core/files');
 var ServerSideExtension = require('../core/server-side-extension');
 var ResponseFilter = require('../core/response-filter');
+
+var config = require('../core/config');
 
 function Upload() {
   Cmdln.call(this, {
@@ -263,10 +269,11 @@ Upload.prototype.do_stack.help = (
 );
 
 Upload.prototype.do_appLevel = function(subcmd, opts, args, callback) {
-  var appLevelName = args[0];
+  var appLevelNames = args;
+  var appLevelBasePath = path.join(config.dir.project_root, 'app-level');
 
-  if (!appLevelName) {
-    return callback('App-level not specified.');
+  if (!appLevelNames.length) {
+    appLevelNames = glob.sync(appLevelBasePath + '/*').map(url => url.split('/').pop());
   }
 
   var appLevel = new AppLevel('admin');
@@ -280,11 +287,13 @@ Upload.prototype.do_appLevel = function(subcmd, opts, args, callback) {
     return callback(error);
   });
 
-  appLevel.upload(appLevelName, opts, callback);
+  
+  appLevel.upload(appLevelNames, opts, callback);
 };
 
 Upload.prototype.do_appLevel.help = (
-  'Upload an app-level to OCC.\n\n' +
+  'Upload an app-level to OCC.\n' +
+  'App-level name is optional. If name is not specified it will upload oeCore and msidna-components\n\n' +
   'Usage:\n' +
   '     {{name}} {{cmd}} <stack-name> [options] \n\n' +
   '{{options}}'
@@ -316,7 +325,10 @@ Upload.prototype.do_files = function(subcmd, opts, args, callback) {
     return callback(error);
   });
 
-  files.uploadCommand(filePath, opts, callback);
+  var self = this;
+  files.uploadCommand(filePath, opts, function(cb) {
+    self.do_appLevel('appLevel', {}, [], cb);
+  });
 };
 
 Upload.prototype.do_files.help = (

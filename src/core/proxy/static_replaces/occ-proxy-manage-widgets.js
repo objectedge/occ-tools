@@ -48,7 +48,10 @@
           }
 
           if(localesJson) {
-            window.oe.widgets[widgetName].$data.resources(localesJson.resources);
+            var resources = window.oe.widgets[widgetName].$data.resources;
+            resources.notifySubscribers = function () { console.log('Silent update occurred...'); };
+            resources(localesJson.resources);
+            resources.notifySubscribers = require('knockout').subscribable.fn.notifySubscribers.bind(this);
           }
         }
       }

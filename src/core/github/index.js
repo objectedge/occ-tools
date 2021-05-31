@@ -6,7 +6,7 @@ const _config = require('../config');
 const github = new Octokit({
   auth: _config.github.token,
   request : {
-    timeout: 5000,
+    timeout: 30000,
   }
 });
 

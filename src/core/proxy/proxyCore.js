@@ -379,7 +379,7 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
         var minifiedFile = UglifyJS.minify(item, configs.uglify);
         var tempFileDir = path.join(outputPath, 'vendors');
 
-        item = item.resolve(tempFileDir, jsName + '.min.js');
+        item = path.resolve(tempFileDir, jsName + '.min.js');
 
         fs.ensureDirSync(tempFileDir);
         fs.writeFileSync(item, minifiedFile.code);

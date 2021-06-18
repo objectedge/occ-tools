@@ -1,7 +1,7 @@
 {
   "name": "occ-tools-cli",
   "productName": "OCC-TOOLS-CLI",
-  "version": "2.0.0-beta.46",
+  "version": "2.0.0-beta.47",
   "description": "Object Edge tools for tasks automation on Oracle Cloud Commerce platform.",
   "license": "MIT",
   "repository": "github.com/intelimen/occ-tools",
@@ -70,6 +70,7 @@
     "nodemailer": "4.6.8",
     "object-deep-search": "0.0.7",
     "occ-custom-bootstrap-less": "github:douglashipolito/occ-custom-bootstrap-less",
+    "otpauth": "^7.0.4",
     "prompt": "^1.1.0",
     "request": "^2.55.0",
     "sequelize-auto-migrations": "^1.0.3",

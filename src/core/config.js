@@ -17,11 +17,12 @@ var baseUrl = configsData.projects.current.url;
 var username = configsData.projects.current.credentials.username;
 var password = configsData.projects.current.credentials.password;
 var applicationKey = configsData.projects.current.credentials['application-key'];
+var twoFASecretKey = configsData.projects.current.credentials['secret'];
 var storefrontDir = configsData.projects['storefront-dir'];
 var absoluteStorefrontDir = path.join(configsData.projects.current.path, storefrontDir);
 
-var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : true;
-var useApplicationKey = typeof configsData['use-application-key'] !== 'undefined' ? configsData['use-application-key'] : false;
+var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : false;
+var useApplicationKey = typeof configsData['use-application-key'] !== 'undefined' ? configsData['use-application-key'] : true;
 
 var loginHeaderAuth =  {
   'Authorization': 'Bearer ' + applicationKey
@@ -31,7 +32,8 @@ var loginCredentialsMFA = {
   grant_type: 'password',
   username: username,
   password: password,
-  totp_code: configsData['totp-code']
+  totp_code: configsData['totp-code'],
+  secret: twoFASecretKey
 };
 
 var loginCredentialsApplicationKey = {

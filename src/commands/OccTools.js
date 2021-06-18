@@ -107,6 +107,12 @@ OccTools.prototype.init = function (options, args, callback) {
   var allArgs = Array.prototype.slice.call(arguments);
   var self = this;
 
+  console.log(`
+  ##################################################################################################
+    Executing command for: ${appConfig.environment.details.url}(${appConfig.environment.current})
+  ################################################################################################## \n
+  `);
+
   blockCommandsByEnvBranch(args, function (finishProcess) {
     if(finishProcess) {
       return callback(false);
@@ -127,6 +133,7 @@ OccTools.prototype.init = function (options, args, callback) {
       winston.info('Forcing MFA LOGIN using the following TOTP CODE: ' + options.totp_code);
       appConfig.useApplicationKey = false;
       appConfig.useMFALogin = true;
+      appConfig.forcedTotpCode = true;
       appConfig.credentials = appConfig.loginCredentialsMFA;
       appConfig.credentials.totp_code = options.totp_code;
     }

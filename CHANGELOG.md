@@ -7,6 +7,7 @@ This project must adhere to [this](https://github.com/olivierlacan/keep-a-change
 ### Added
 
 - New auto 2FA token generation. This will allow us to run commands using MFA without enter the totp code manually.
+- Version Check. OCC-TOOLS will check if there is a new version available and then, notify the user.
 
 ## [2.0.0-beta.46] - 2021-05-26]
 

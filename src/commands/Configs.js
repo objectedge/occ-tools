@@ -510,6 +510,11 @@ Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback
         description: 'OCC Application Key(Enter to keep current)',
         required: false,
         message: 'Please type a your OCC enviroment application key'
+      },
+      secret: {
+        description: 'OCC Two-factor Authentication (2FA) secret key(Enter to keep current)',
+        required: true,
+        message: 'Please type a your OCC enviroment 2FA Secret key'
       }
     }
   });
@@ -531,7 +536,8 @@ Configs.prototype.do_set_env_credentials = function(subcmd, opts, args, callback
       force: true,
       username: result.username,
       password: result.password,
-      'application-key': result['application-key'] || null
+      'application-key': result['application-key'] || null,
+      secret: result.secret
     }, callback);
   });
 };

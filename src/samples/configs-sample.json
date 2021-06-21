@@ -10,7 +10,8 @@
       "credentials": {
         "username": "",
         "password": "",
-        "application-key": ""
+        "application-key": "",
+        "secret": ""
       },
       "theme": {
         "name": "",

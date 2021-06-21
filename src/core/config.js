@@ -2,7 +2,6 @@ var path = require('path');
 var fs = require('fs-extra');
 var os = require('os');
 var occToolsConfigsCore = new (require('./configs'));
-
 var configsDir = occToolsConfigsCore.getConfigsDir();
 var configsFilePath = occToolsConfigsCore.getConfigsFilePath();
 var configsData = occToolsConfigsCore.getConfigsJSON();

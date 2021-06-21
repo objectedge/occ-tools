@@ -28,7 +28,7 @@ function removeLoginToken(cb) {
   });
 }
 
-function Configs() { }
+function Configs() {}
 
 function updateConfigs(configsJson, optionCommand, cb) {
   fs.writeJson(configsFile, configsJson, { spaces: 2 }, function (error) {

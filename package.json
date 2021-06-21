@@ -39,6 +39,7 @@
     "clean-css": "^5.1.2",
     "cmdln": "^3.5.3",
     "colors": "^1.1.2",
+    "console-log-it": "^1.1.0",
     "console.table": "0.10.0",
     "cors": "^2.8.5",
     "cryptiles": "^4.1.2",

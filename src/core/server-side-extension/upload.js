@@ -39,7 +39,7 @@ function uploadSSE(name, opts, callback) {
       },
       function(next) {
         winston.info('Installing dependencies');
-        if(shelljs.exec('cd ' + sourceDir + ' && npm install --only=prod').code !== 0) {
+        if(shelljs.exec('cd ' + '"' + sourceDir + '"' + ' && npm install --only=prod').code !== 0) {
           next('Error on installing dependencies');
         } else {
           next();

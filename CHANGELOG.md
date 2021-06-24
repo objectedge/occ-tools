@@ -2,6 +2,12 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.48] - 2021-06-24]
+
+### Fixed
+
+- There was a problem in the upload SSE command where if the user had some space in the path, it would thrown an error.
+
 ## [2.0.0-beta.47] - 2021-06-18]
 
 ### Added

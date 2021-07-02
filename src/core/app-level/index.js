@@ -9,6 +9,7 @@ var Auth = require('../auth');
 var _generate = require('./generate');
 var _list = require('./list');
 var _upload = require('./upload');
+var _download = require('./download');
 
 function AppLevel() {
   EventEmitter.call(this);
@@ -44,13 +45,25 @@ AppLevel.prototype.upload = function(names, options) {
 
 /**
  * List app-levels from OCC.
- * 
+ *
  * @param  {Object} options The options object.
  */
 AppLevel.prototype.list = function(options) {
   var self = this;
   _list.call(this, options, function(err) {
     err ? self.emit('error', err) : self.emit('complete', 'App-levels listed.');
+  });
+};
+
+/**
+ * Download app-levels from OCC.
+ *
+ * @param  {Object} options The options object.
+ */
+ AppLevel.prototype.download = function (options) {
+  var self = this;
+  _download.call(this, options, function (err) {
+    err ? self.emit('error', err) : self.emit('complete', 'App-levels downloaded.');
   });
 };
 

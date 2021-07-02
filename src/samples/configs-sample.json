@@ -21,9 +21,6 @@
     "credentials": {}
   },
   "github": {
-    "username": "",
-    "password": "",
-    "type": "basic",
     "token": ""
   },
   "use-mfa-login": true,

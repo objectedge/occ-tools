@@ -81,10 +81,7 @@ Configs.prototype.setGithubCredentials = function (options, cb) {
       return;
     }
 
-    configsJson.github.username = options.username;
-    configsJson.github.password = options.password;
     configsJson.github.token = options.token;
-    configsJson.github.type = options.type;
     updateConfigs(configsJson, 'Github', cb);
   });
 };
@@ -279,6 +276,8 @@ Configs.prototype.setEnv = function (env, cb) {
     configsJson.projects.current.env = env;
     configsJson.projects.current.url = environment.url;
     configsJson.projects.current.theme = theme;
+    configsJson.projects.current.defaultLocale = occToolsProjectJson.defaultLocale || "en";
+    configsJson.projects.current.locales = occToolsProjectJson.locales;
 
     removeLoginToken(function () {
       updateConfigs(configsJson, 'Environment', function(error) {

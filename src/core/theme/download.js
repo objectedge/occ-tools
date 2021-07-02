@@ -27,16 +27,23 @@ function writeThemeFiles(item, themeDetails, callback) {
   var themeDir = path.join(_configs.dir.project_root, 'themes', item.name + '_' + item.id);
   winston.debug('Themes directory: %s', themeDir);
 
-  async.parallel([
-    function(callback) {
-      winston.info('Writing %s styles.less', item.id);
-      fs.outputFile(path.join(themeDir, 'styles.less'), themeDetails.styles, callback);
-    },
-    function(callback) {
-      winston.info('Writing %s variables.less', item.id);
-      fs.outputFile(path.join(themeDir, 'variables.less'), themeDetails.variables, callback);
-    }
-  ], callback);
+  async.parallel(
+    [
+      function (callback) {
+        winston.info('Writing %s styles.less', item.id);
+        fs.outputFile(path.join(themeDir, 'styles.less'), themeDetails.styles, callback);
+      },
+      function (callback) {
+        winston.info('Writing %s variables.less', item.id);
+        fs.outputFile(path.join(themeDir, 'variables.less'), themeDetails.variables, callback);
+      },
+      function (callback) {
+        winston.info('Writing %s additionalStyles.less', item.id);
+        fs.outputFile(path.join(themeDir, 'additionalStyles.less'), themeDetails.additionalStyles, callback);
+      },
+    ],
+    callback
+  );
 }
 
 /**

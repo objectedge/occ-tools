@@ -15,20 +15,6 @@ function setPromptSchema(schema) {
   return schema;
 }
 
-var githubBasicCredentials = {
-  properties: {
-    username: {
-      description: colors.green('Github\'s username'),
-      required: true
-    },
-    password: {
-      hidden: true,
-      description: colors.green('Github\'s password'),
-      required: true
-    }
-  }
-};
-
 var githubTokenCredentials = {
   properties: {
     token: {
@@ -90,12 +76,6 @@ Configs.prototype.do_init = function(subcmd, opts, args, callback) {
         required: false,
         default: '123456',
         description: 'Time-based One-Time Password'
-      },
-      'github-auth-type': {
-        description: 'Github\'s authentication type (basic or token)',
-        pattern: /^(basic|token)$/,
-        message: 'Invalid option, type either basic or token',
-        required: true
       }
     }
   });
@@ -113,36 +93,18 @@ Configs.prototype.do_init = function(subcmd, opts, args, callback) {
 
     async.waterfall([
       function(cb) {
-        if (result['github-auth-type'] === 'basic') {
-          prompt.get(githubBasicCredentials, function (error, credentials) {
-            if(error) {
-              if (error.message === 'canceled') {
-                return cb('\nOperation canceled');
-              }else {
-                return cb(error.message);
-              }
+        prompt.get(githubTokenCredentials, function (error, credentials) {
+          if(error) {
+            if (error.message === 'canceled') {
+              return cb('\nOperation canceled');
+            }else {
+              return cb(error.message);
             }
-            occToolsConfigs.setGithubCredentials({
-              type: result['github-auth-type'],
-              username: credentials.username,
-              password: credentials.password
-            }, cb);
-          });
-        } else {
-          prompt.get(githubTokenCredentials, function (error, credentials) {
-            if(error) {
-              if (error.message === 'canceled') {
-                return cb('\nOperation canceled');
-              }else {
-                return cb(error.message);
-              }
-            }
-            occToolsConfigs.setGithubCredentials({
-              type: result['github-auth-type'],
-              token: credentials.token
-            }, cb);
-          });
-        }
+          }
+          occToolsConfigs.setGithubCredentials({
+            token: credentials.token
+          }, cb);
+        });
       },
       function(cb) {
         occToolsConfigs.setProjectsBasePath(result['projects-path'], cb);
@@ -552,16 +514,7 @@ Configs.prototype.do_set_env_credentials.help = (
 Configs.prototype.do_set_github = function(subcmd, opts, args, callback) {
   var occToolsConfigs = new _Configs();
 
-  var schema = setPromptSchema({
-    properties: {
-      'github-auth-type': {
-        description: 'Github\'s authentication type (basic or token)',
-        pattern: /^(basic|token)$/,
-        message: 'Invalid option, type either basic or token',
-        required: true
-      }
-    }
-  });
+  var schema = setPromptSchema(githubTokenCredentials);
 
   prompt.start();
 
@@ -574,36 +527,9 @@ Configs.prototype.do_set_github = function(subcmd, opts, args, callback) {
       }
     }
 
-    if (result['github-auth-type'] === 'basic') {
-      prompt.get(githubBasicCredentials, function (error, credentials) {
-        if(error) {
-          if (error.message === 'canceled') {
-            return callback('\nOperation canceled');
-          }else {
-            return callback(error.message);
-          }
-        }
-        occToolsConfigs.setGithubCredentials({
-          type: result['github-auth-type'],
-          username: credentials.username,
-          password: credentials.password
-        }, callback);
-      });
-    } else {
-      prompt.get(githubTokenCredentials, function (error, credentials) {
-        if(error) {
-          if (error.message === 'canceled') {
-            return callback('\nOperation canceled');
-          }else {
-            return callback(error.message);
-          }
-        }
-        occToolsConfigs.setGithubCredentials({
-          type: result['github-auth-type'],
-          token: credentials.token
-        }, callback);
-      });
-    }
+    occToolsConfigs.setGithubCredentials({
+      token: result.token
+    }, callback);
 
   });
 };

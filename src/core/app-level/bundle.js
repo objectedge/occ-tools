@@ -186,13 +186,35 @@ function bundleAppLevelJS(options, callback) {
     try {
       contents = JSON.parse(contents);
 
-      if (contents.uglify) {
+      if (contents.uglify || contents.es5) {
         configs = Object.assign({}, configs, contents);
       }
     } catch(err) {
       callback(util.format('Error parsing appLevel configuration file. Please check %s configuration\'s integrity.', options.name));
     }
   }
+
+  if (configs.es5) {
+    const jsName = options.name + '.js';
+    const jsPath = path.join(options.dir, options.name, 'index.js');
+
+    const outputFile = jsPath;
+    const outputFileName = jsName;
+    const outputFilePath = jsPath;
+    const entryFilePath = jsPath;
+    const stats = {};
+
+    callback(
+      null,
+      outputFile,
+      outputFileName,
+      outputFilePath,
+      entryFilePath,
+      stats
+    );
+    return;
+  }
+
 
   walk(currentAppLevelExtensionDir).on('file', function (item) {
 

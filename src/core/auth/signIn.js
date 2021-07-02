@@ -83,7 +83,7 @@ function storeTokens(httpResponse, responseBody, callback) {
   var self = this;
   var tokens = {
     access: responseBody.access_token,
-    file: httpResponse.headers['set-cookie'][0]
+    file: JSON.stringify(httpResponse.headers['set-cookie'], null, 2)
   };
 
   async.each(Object.keys(tokens), function(type, callback) {

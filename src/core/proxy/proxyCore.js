@@ -405,6 +405,10 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
     }
   }
 
+  if (configs.es5) {
+    done(null, path.join(appLevelPath, 'index.js'));
+  }
+
   walk(currentAppLevelExtensionDir).on('file', function (item) {
     if (new RegExp(configsPath).test(item)) return;
 
@@ -415,7 +419,7 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
         var minifiedFile = UglifyJS.minify(item, configs.uglify);
         var tempFileDir = path.join(outputPath, 'vendors');
 
-        item = item.resolve(tempFileDir, jsName + '.min.js');
+        item = path.resolve(tempFileDir, jsName + '.min.js');
 
         fs.ensureDirSync(tempFileDir);
         fs.writeFileSync(item, minifiedFile.code);

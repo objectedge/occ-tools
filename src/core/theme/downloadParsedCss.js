@@ -58,7 +58,7 @@ function getCssFilesMetaFromHtml(homeHtml, callback) {
       });
     }
   });
-  
+
   return fileMeta.length > 0 ? callback(null, fileMeta) : callback(new Error('no css files found in HTML.'));
 }
 
@@ -104,7 +104,7 @@ function processStyleImports(err, styleCssFileMeta, fileToken, styleCSSBody, cal
   };
 
   //If there are imports, process them
-  if(importFiles) {    
+  if(importFiles) {
     async.each(importFiles, function(importFile, next) {
       importFile = importFile.replace(/@import\s'/, '').replace('\'', '');
 
@@ -133,7 +133,10 @@ function processStyleImports(err, styleCssFileMeta, fileToken, styleCSSBody, cal
  */
 function downloadCssFile(cssFileMeta, fileToken, callback, httpAuth) {
   var jar = request.jar();
-  jar.setCookie(request.cookie(fileToken), cssFileMeta.href);
+  JSON.parse(fileToken).forEach((c) => {
+    var cookie = request.cookie(c);
+    jar.setCookie(cookie, cssFileMeta.href);
+  });
   winston.info('Downloading css file %s...', cssFileMeta.href);
 
   var requestObject = { url: cssFileMeta.href, jar: jar };
@@ -142,7 +145,7 @@ function downloadCssFile(cssFileMeta, fileToken, callback, httpAuth) {
     requestObject.auth = httpAuth;
   }
 
-  request(requestObject, function(err, httpResponse, body) {    
+  request(requestObject, function(err, httpResponse, body) {
     if(cssFileMeta.name !== 'style.css') {
       return callback(err, cssFileMeta, body);
     }
@@ -180,7 +183,7 @@ function downloadCssFiles(cssFilesMeta, fileToken, destDir, callback, httpAuth) 
         function(callback) {
           downloadCssFile(cssFileMeta, fileToken, callback, httpAuth);
         },
-        function(cssFileMeta, cssFileContent, callback) {  
+        function(cssFileMeta, cssFileContent, callback) {
           var pieces = cssFileMeta.name.split('?');
           var filename = pieces[0];
           writeCssFile(path.join(destDir, filename), cssFileContent, callback);
@@ -192,7 +195,7 @@ function downloadCssFiles(cssFilesMeta, fileToken, destDir, callback, httpAuth) 
 
 module.exports = function(destDir, callback, httpAuth, siteId) {
   var self = this;
-  
+
   async.waterfall([
     function(callback){
       loadHtmlFromStorefrontHome.call(self, httpAuth, siteId, callback);

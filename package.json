@@ -4,7 +4,7 @@
   "version": "2.0.0-beta.48",
   "description": "Object Edge tools for tasks automation on Oracle Cloud Commerce platform.",
   "license": "MIT",
-  "repository": "github.com/intelimen/occ-tools",
+  "repository": "github.com/objectedge/occ-tools",
   "private": true,
   "bin": {
     "occ-tools": "./index.js"
@@ -69,6 +69,7 @@
     "multiparty": "^4.2.1",
     "ncp": "^2.0.0",
     "nodemailer": "4.6.8",
+    "node-2fa": "1.1.2",
     "object-deep-search": "0.0.7",
     "occ-custom-bootstrap-less": "github:douglashipolito/occ-custom-bootstrap-less",
     "otpauth": "^7.0.4",

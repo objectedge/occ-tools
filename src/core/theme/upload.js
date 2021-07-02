@@ -31,6 +31,18 @@ function readThemeFiles(item, callback) {
         themeFiles.variables = fileContent;
         return callback();
       });
+    },
+    function(callback) {
+      const additionalStylesPath = path.join(themeDir, 'additionalStyles.less');
+      if (fs.existsSync(additionalStylesPath)) {
+        fs.readFile(path.join(themeDir, 'additionalStyles.less'), 'utf8', function(err, fileContent) {
+          if (err) return callback(err);
+          themeFiles.additionalStyles = fileContent;
+          return callback();
+        });
+      } else {
+        return callback();
+      }
     }
   ], function(err) {
     return callback(err, themeFiles);

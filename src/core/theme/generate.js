@@ -15,8 +15,10 @@ var _downloadParsedCss = require('./downloadParsedCss');
 
 var _lessFilename = 'styles.less';
 var _variablesFilename = 'variables.less';
-var _lessFiles = path.join(_config.dir.project_root, 'less/!(variables)/*.less');
+var _additionalStylesFilename = 'additionalStyles.less';
+var _lessFiles = path.join(_config.dir.project_root, 'less/!(variables|additionalStyles)/*.less');
 var _variablesFiles = path.join(_config.dir.project_root, 'less/variables/*.less');
+var _additionalStylesFiles = path.join(_config.dir.project_root, 'less/additionalStyles/*.less');
 var _parsedCssDest = path.join(_config.dir.project_root, 'hologram', 'build');
 
 module.exports = function(callback, options) {
@@ -50,6 +52,15 @@ module.exports = function(callback, options) {
     function(fileContent, callback) {
       winston.info('Writing to "%s"...', _variablesFilename);
       fs.outputFile(path.join(_config.dir.project_root, 'themes', util.format('%s_%s', _config.theme.name, _config.theme.id), _variablesFilename), fileContent, callback);
+    },
+    function(callback) {
+      winston.info('Merging additionalStyles less files...');
+
+      globcat(_additionalStylesFiles, callback);
+    },
+    function(fileContent, callback) {
+      winston.info('Writing to "%s"...', _additionalStylesFilename);
+      fs.outputFile(path.join(_config.dir.project_root, 'themes', util.format('%s_%s', _config.theme.name, _config.theme.id), _additionalStylesFilename), fileContent, callback);
     },
     function(callback) {
       winston.info('Uploading "%s" to OCC...', _lessFilename);

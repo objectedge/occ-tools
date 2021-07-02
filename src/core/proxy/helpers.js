@@ -79,6 +79,7 @@ function replaceLESS(done, options) {
   if(!options.renderTheme) {
     importFiles.push('@import "variables.less";');
     importFiles.push('@import "styles.less";');
+    importFiles.push('@import "additionalStyles.less";');
 
     //Adding a specific context to proxy
     importFiles.push('/**OCC-PROXY-LESS**/ \n.occpc {\n');

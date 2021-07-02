@@ -31,7 +31,7 @@ module.exports = async function () {
         { color: 'green', message: `Newer version: ${packageJsonVersion}`},
         '',
         { color: 'blue', message: 'Please run git pull inside the occ-tools and npm install' },
-        { color: 'magenta', message: 'Check the changelog: https://bitbucket.mot-solutions.com/projects/DIGITAL/repos/occ-tools/browse/CHANGELOG.md' }
+        { color: 'magenta', message: 'Check the changelog in the occ-tools repository.' }
       );
 
       await wait(2000);

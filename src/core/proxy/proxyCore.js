@@ -369,6 +369,10 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
     }
   }
 
+  if (configs.es5) {
+    done(null, path.join(appLevelPath, 'index.js'));
+  }
+
   walk(currentAppLevelExtensionDir).on('file', function (item) {
     if (new RegExp(configsPath).test(item)) return;
 

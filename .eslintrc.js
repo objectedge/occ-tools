@@ -1,11 +1,12 @@
 module.exports = {
     "env": {
-        "es6": false,
+        "es6": true,
         "node": true
     },
     "extends": "eslint:recommended",
     "parserOptions": {
-        "sourceType": "module"
+        "sourceType": "module",
+        "ecmaVersion": 2018
     },
     "rules": {
         "indent": [2, 2, { "SwitchCase": 1 }],

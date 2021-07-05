@@ -78,7 +78,8 @@ const downloadAllJs = async (occ, widgetInfo, settings) => {
  * @param  {Object} settings   The setting object.
  */
 const writeDescriptor = async (occ , widgetInfo, settings) => {
-  winston.info('Writing %s widget.json...', widgetInfo.item.widgetType);
+  const widget = widgetInfo.item;
+  winston.info('Writing %s widget.json...', widget.widgetType);
   const widgetPath = getWidgetPath(settings, widgetInfo);
   const configPath = path.join(widgetPath, 'widget.json');
 
@@ -91,7 +92,18 @@ const writeDescriptor = async (occ , widgetInfo, settings) => {
       }
     };
     const response = await occ.promisedRequest(options);
-    const configContent = JSON.stringify(response.metadata, null, '  ');
+    const config = {
+      version: widget.latestVersion,
+      source: widget.source,
+      global: widget.global,
+      javascript: widget.entrypoint,
+      i18nresources: widget.i18nresources,
+      widgetFamily: widget.widgetType,
+      widgetType: widget.widgetType,
+      ...response.metadata,
+    };
+
+    const configContent = JSON.stringify(config, null, 2);
     fs.outputFileSync(configPath, configContent);
   } else {
     const widget = widgetInfo.item;
@@ -102,7 +114,7 @@ const writeDescriptor = async (occ , widgetInfo, settings) => {
     });
 
     metadata.elementized = !!widget.layouts.length;
-    fs.outputFileSync(configPath, JSON.stringify(metadata, null, '  '));
+    fs.outputFileSync(configPath, JSON.stringify(metadata, null, 2));
   }
 };
 
@@ -128,12 +140,14 @@ const downloadLocales = (occ, widgetInfo, settings) => {
       },
     };
     const data = await occ.promisedRequest(options);
-    const localeJson = data ? JSON.stringify(data.localeData, null, 2) : '{}';
     const localePath = path.join(localesPath, locale, `ns.${widgetInfo.item.i18nresources}.json`);
+
     if (!data) {
       winston.warn(`Locale ${locale} not find for widget ${widget}`);
+    } else {
+      const localeJson = JSON.stringify(data.localeData, null, 2);
+      fs.outputFileSync(localePath, localeJson);
     }
-    fs.outputFileSync(localePath, localeJson);
   });
 
   return Promise.all(promises);
@@ -149,12 +163,14 @@ const downloadConfigLocales = async (occ, widget, widgetId, configPath, settings
       },
     };
     const data = await occ.promisedRequest(options);
-    const localeJson = data ? JSON.stringify(data.localeData, null, 2) : '{}';
     const localePath = path.join(configPath, 'locales', `${locale}.json`);
+
     if (!data) {
       winston.warn(`Config locale ${locale} not find for widget ${widget}`);
+    } else {
+      const localeJson = JSON.stringify(data.localeData, null, 2);
+      fs.outputFileSync(localePath, localeJson);
     }
-    fs.outputFileSync(localePath, localeJson);
   });
 
   return Promise.all(promises);

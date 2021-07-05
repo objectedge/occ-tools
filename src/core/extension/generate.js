@@ -161,7 +161,7 @@ function generateWidgetsExtension(options, widgetsList, archive, finalizeArchive
   });
 }
 
-function generateAppLevelExtension(options, webpackFilesStats, archive, finalizeArchive, callback){
+function generateAppLevelExtension(options, webpackFilesStats, archive, finalizeArchive){
   async.waterfall([
     bundleAppLevel.bundle.bind(this, options),
     function (outputFile, outputFileName, outputFilePath, entryFilePath, stats, callback) {
@@ -174,7 +174,11 @@ function generateAppLevelExtension(options, webpackFilesStats, archive, finalize
         winston.error(error);
       }
 
-      bundleAppLevel.clear(outputFilePath, entryFilePath, callback);
+      if (stats && stats.es5) {
+        callback();
+      } else {
+        bundleAppLevel.clear(outputFilePath, entryFilePath, callback);
+      }
     }, function () {
       finalizeArchive();
     }
@@ -182,7 +186,7 @@ function generateAppLevelExtension(options, webpackFilesStats, archive, finalize
 }
 
 
-function generateConfigExtension(options, archive, finalizeArchive, callback){
+function generateConfigExtension(options, archive, finalizeArchive){
   async.waterfall([
     function (callback) {
       var sourceDir = path.join(options.dir, options.name);
@@ -193,7 +197,7 @@ function generateConfigExtension(options, archive, finalizeArchive, callback){
   ], finalizeArchive);
 }
 
-function generateGatewayExtension(options, archive, finalizeArchive, callback){
+function generateGatewayExtension(options, archive, finalizeArchive){
   async.waterfall([
     function (callback) {
       var sourceDir = path.join(options.dir, options.name);

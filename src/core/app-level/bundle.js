@@ -172,7 +172,7 @@ function bundleAppLevelJS(options, callback) {
     const outputFileName = jsName;
     const outputFilePath = jsPath;
     const entryFilePath = jsPath;
-    const stats = {};
+    const stats = {es5: true};
 
     callback(
       null,

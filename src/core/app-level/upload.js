@@ -33,10 +33,17 @@ module.exports = function(appLevel, settings, callback) {
           }
           return callback();
         });
+      },
+      function(callback) {
+        if (stats && stats.es5) {
+          callback();
+        } else {
+          bundleAppLevel.clear(outputFilePath, entryFilePath, callback);
+        }
       }
     ], function(error){
       if (error) callback(error);
-      callback(null, outputFilePath, entryFilePath);
+      callback(null);
     });
   };
 
@@ -46,7 +53,6 @@ module.exports = function(appLevel, settings, callback) {
       'dir': path.join(_config.dir.project_root, 'app-level'),
       'name': appLevel
     }),
-    uploadAppLevel,
-    bundleAppLevel.clear
+    uploadAppLevel
   ], callback);
 };

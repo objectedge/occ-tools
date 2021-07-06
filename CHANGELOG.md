@@ -2,6 +2,60 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
+## [2.0.0-beta.48] - 2021-06-24]
+
+### Fixed
+
+- There was a problem in the upload SSE command where if the user had some space in the path, it would thrown an error.
+
+## [2.0.0-beta.47] - 2021-06-18]
+
+### Added
+
+- New auto 2FA token generation. This will allow us to run commands using MFA without enter the totp code manually.
+- Version Check. OCC-TOOLS will check if there is a new version available and then, notify the user.
+
+## [2.0.0-beta.46] - 2021-05-26]
+
+### Added
+
+- upload all appLevels by "occ-tools upload appLevel" command.
+- trigger uploading appLevels after uploading file to invalidate cache and version.
+
+## [2.0.0-beta.45] - 2021-05-25]
+
+### Fixed
+
+- Problem on proxy for checkout widgets
+
+## [2.0.0-beta.44] - 2021-05-13]
+
+### Fixed
+
+- add timeStamp to "ASSETS_VERSION". As we faced some problems with cache, timestamp will be added once someone deploy oeCore.
+
+## [2.0.0-beta.43] - 2021-05-12]
+
+### Fixed
+
+- Minor fix in the files upload command
+
+## [2.0.0-beta.42] - 2021-05-12]
+### Added
+- Option to append a "banner" in the app-level, in that way, we can define some global JS and configure requirejs aliases properly.
+- "project-settings" in the occ-tools.project.json. This will file can be used as a default setting for the project.
+- Added "ASSETS_VERSION" global config, this value can be used to set the files version. Webpack will replace all occurencies of ASSETS_VERSION in the code.
+## [2.0.0-beta.41] - 2021-05-01]
+### Added
+- Minify `.json` and `.js` extensions when uploading files
+
+### Fixed
+- Update outdated packages due to node deprecated warnings
+
+## [2.0.0-beta.40] - 2021-02-21]
+### Added
+- Support to ccstore path on webpack rules
+
 ## [2.0.0-beta.38] - 2020-12-03]
 ### Fixed
 - Errors on the authentication and no logs were being displayed

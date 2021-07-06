@@ -4,7 +4,9 @@ var Cmdln = require('cmdln').Cmdln;
 var path = require('path');
 var fs = require('fs-extra');
 var git = require('isomorphic-git');
+const { logBox } = require('console-log-it');
 var appConfig = require('../core/config');
+var checkVersion = require('../core/configs/version');
 
 git.plugins.set('fs', fs);
 
@@ -103,9 +105,13 @@ function blockCommandsByEnvBranch(args, callback) {
   .catch(processBranchError);
 }
 
-OccTools.prototype.init = function (options, args, callback) {
+OccTools.prototype.init = async function (options, args, callback) {
   var allArgs = Array.prototype.slice.call(arguments);
   var self = this;
+
+  await checkVersion();
+
+  logBox({ padding: 10, symbol: '-' })(`Executing command for: ${appConfig.environment.details.url}(${appConfig.environment.current})`);
 
   blockCommandsByEnvBranch(args, function (finishProcess) {
     if(finishProcess) {
@@ -127,6 +133,7 @@ OccTools.prototype.init = function (options, args, callback) {
       winston.info('Forcing MFA LOGIN using the following TOTP CODE: ' + options.totp_code);
       appConfig.useApplicationKey = false;
       appConfig.useMFALogin = true;
+      appConfig.forcedTotpCode = true;
       appConfig.credentials = appConfig.loginCredentialsMFA;
       appConfig.credentials.totp_code = options.totp_code;
     }

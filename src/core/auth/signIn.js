@@ -3,26 +3,34 @@
 var async = require('async');
 var winston = require('winston');
 var request = require('request');
-var twoFactor = require('node-2fa');
-var lodash = require('lodash');
+var OTPAuth = require('otpauth');
 var config = require('../config');
 
+function generateOneTimePasswordToken(credentials) {
+  // Create a new TOTP object.
+  var totp = new OTPAuth.TOTP({
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret: credentials.secret
+  });
+
+  return totp.generate();
+}
 /**
  * Do a login request to OCC.
  * @param  {Object}   credentials The OCC user credentials.
  * @param  {Function} callback    The fn to be executed after request.
  */
 function occLoginRequest(credentials, callback) {
-  const loginCredentials = lodash.clone(credentials);
-  if (loginCredentials.mfaSecret) {
-    loginCredentials.totp_code = twoFactor.generateToken(loginCredentials.mfaSecret).token;
-    delete loginCredentials.mfaSecret;
-  }
-
   var requestOptions = {
     url: this._loginEndpoint,
-    form: loginCredentials
+    form: credentials
   };
+
+  if(!config.forcedTotpCode) {
+    credentials.totp_code = generateOneTimePasswordToken(credentials);
+  }
 
   if(config.useApplicationKey) {
     requestOptions.headers = config.loginHeaderAuth;

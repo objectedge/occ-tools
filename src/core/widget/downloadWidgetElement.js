@@ -1,41 +1,35 @@
-"use strict";
+'use strict';
 
-var winston = require("winston");
-var path = require("path");
-var fs = require("fs-extra");
+var winston = require('winston');
+var path = require('path');
+var fs = require('fs-extra');
 
-var _configs = require("../config");
+var _configs = require('../config');
 
 function getWidgetPath(settings, widgetInfo) {
   var folder = settings && settings.dest ? settings.dest : widgetInfo.folder;
   return path.join(
     _configs.dir.project_root,
-    "widgets",
+    'widgets',
     folder,
     widgetInfo.item.widgetType
   );
 }
 
-const fetchGlobalElements = function (widgets, callback) {
-  var self = this;
-  winston.info("Fetching global elements...");
+const fetchGlobalElements = async (occ) => {
+  winston.info('Fetching global elements...');
 
-  self._occ
-    .promisedRequest("elements?globals=true")
-    .then((response) => {
-      const globalElementTags = new Set();
-      response.items.forEach((element) => {
-        !globalElementTags.has(element.tag) &&
-          globalElementTags.add(element.tag);
-      });
+  const response = await occ.promisedRequest('elements?globals=true');
+  const globalElementTags = new Set();
+  response.items.forEach((element) => {
+    !globalElementTags.has(element.tag) && globalElementTags.add(element.tag);
+  });
 
-      callback(null, widgets, globalElementTags);
-    })
-    .catch((e) => callback(e));
+  return globalElementTags;
 };
 
 function canDownloadElement(elementType) {
-  return !["panel", "instance"].includes(elementType);
+  return !['panel', 'instance'].includes(elementType);
 }
 
 const donwloadElementFile = (occ, type, widgetId, elementTag, elementsPath) => {
@@ -43,9 +37,9 @@ const donwloadElementFile = (occ, type, widgetId, elementTag, elementsPath) => {
   return new Promise((resolve, reject) => {
     const options = {
       api: `widgetDescriptors/${widgetId}/element/${elementTag}/${type}`,
-      method: "get",
+      method: 'get',
       headers: {
-        "X-CCAsset-Language": _configs.defaultLocale,
+        'X-CCAsset-Language': _configs.defaultLocale,
       },
     };
     occ.promisedRequest(options)
@@ -54,7 +48,7 @@ const donwloadElementFile = (occ, type, widgetId, elementTag, elementsPath) => {
 
         fs.outputFileSync(
           getElementPath(type, elementsPath, elementTag),
-          type == "metadata"
+          type == 'metadata'
             ? processElementMetadata(response)
             : response.code[type]
         );
@@ -65,16 +59,16 @@ const donwloadElementFile = (occ, type, widgetId, elementTag, elementsPath) => {
 };
 
 function getElementPath(type, elementsPath, elementTag) {
-  let filename = "";
+  let filename = '';
   switch (type) {
-    case "javascript":
-      filename = path.join("js", "element.js");
+    case 'javascript':
+      filename = path.join('js', 'element.js');
       break;
-    case "template":
-      filename = path.join("templates", "template.txt");
+    case 'template':
+      filename = path.join('templates', 'template.txt');
       break;
-    case "metadata":
-      filename = "element.json";
+    case 'metadata':
+      filename = 'element.json';
       break;
   }
 
@@ -85,13 +79,13 @@ function processElementMetadata(response) {
   let metadata = Object.assign({}, response);
 
   [
-    "source",
-    "repositoryId",
-    "type",
-    "title",
-    "global",
-    "version",
-    "defaultText",
+    'source',
+    'repositoryId',
+    'type',
+    'title',
+    'global',
+    'version',
+    'defaultText',
   ].forEach((key) => delete metadata[key]);
 
   Object.keys(metadata).forEach((key) => {
@@ -113,21 +107,21 @@ function downloadWidgetElementAssets(occ, widget, element, elementsPath) {
   const promises = [];
 
   promises.push(
-    donwloadElementFile(occ, "template", widget.id, element.tag, elementsPath)
+    donwloadElementFile(occ, 'template', widget.id, element.tag, elementsPath)
   );
 
   if (widget.jsEditable) {
     promises.push(
       donwloadElementFile(
         occ,
-        "javascript",
+        'javascript',
         widget.id,
         element.tag,
         elementsPath
       )
     );
     promises.push(
-      donwloadElementFile(occ, "metadata", widget.id, element.tag, elementsPath)
+      donwloadElementFile(occ, 'metadata', widget.id, element.tag, elementsPath)
     );
   }
 
@@ -149,13 +143,14 @@ const downloadWidgetElement = (
 };
 
 const downloadWidgetElements = function (
+  occ,
   widgetInfo,
   globalElementTags,
   widgetInstances,
-  settings,
-  callback
+  settings
 ) {
-  winston.info("Fetching widget elements...");
+  if (widgetInfo.folder === 'oracle') return;
+  winston.info('Fetching widget elements...');
 
   const instances = widgetInfo.item.instances;
   const allInstances = instances.map((instance) =>
@@ -164,7 +159,7 @@ const downloadWidgetElements = function (
 
   const elementsPath = path.join(
     getWidgetPath(settings, widgetInfo),
-    "elements"
+    'elements'
   );
 
   if (widgetInfo.item.editableWidget) {
@@ -175,7 +170,7 @@ const downloadWidgetElements = function (
 
     const promises = Object.keys(uniqueElements).map((key) =>
       downloadWidgetElement(
-        this._occ,
+        occ,
         widgetInfo.item,
         uniqueElements[key],
         globalElementTags,
@@ -183,11 +178,7 @@ const downloadWidgetElements = function (
       )
     );
 
-    Promise.all(promises)
-      .then((result) => {
-        callback(null, result);
-      })
-      .catch((e) => callback(e));
+    return Promise.all(promises);
   } else {
     return;
   }

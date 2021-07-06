@@ -33,13 +33,19 @@ module.exports = function(appLevelNames, settings, callback) {
           }
           return callback();
         });
+      },
+      function(callback) {
+        if (stats && stats.es5) {
+          callback();
+        } else {
+          bundleAppLevel.clear(outputFilePath, entryFilePath, callback);
+        }
       }
     ], function(error){
       if (error) callback(error);
-      callback(null, outputFilePath, entryFilePath);
+      callback(null);
     });
   };
-
 
   async.eachSeries(appLevelNames, function(appLevel, callback) {
     winston.info('Uploading app-level %s', appLevel);
@@ -48,8 +54,7 @@ module.exports = function(appLevelNames, settings, callback) {
         'dir': path.join(_config.dir.project_root, 'app-level'),
         'name': appLevel
       }),
-      uploadAppLevel,
-      bundleAppLevel.clear
+      uploadAppLevel
     ], callback);
   }, callback)
 };

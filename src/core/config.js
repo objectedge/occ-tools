@@ -119,7 +119,7 @@ fs.ensureDirSync(databaseDir);
 // Defines the assets version, this can be used in the store to control the cache
 var assetsVersion = '1.0.0';
 try {
-  assetsVersion = process.env.ASSETS_VERSION ||  require(path.join(configsData.projects.current.path, "package.json")).version;
+  assetsVersion = process.env.ASSETS_VERSION || require(path.join(configsData.projects.current.path, 'package.json')).version;
 } catch(error) {
   winston.debug(`No package.json found at ${configsData.projects.current.path}`);
 }

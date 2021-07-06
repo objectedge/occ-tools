@@ -28,7 +28,7 @@ function removeLoginToken(cb) {
   });
 }
 
-function Configs() { }
+function Configs() {}
 
 function updateConfigs(configsJson, optionCommand, cb) {
   fs.writeJson(configsFile, configsJson, { spaces: 2 }, function (error) {
@@ -279,16 +279,18 @@ Configs.prototype.setEnv = function (env, cb) {
     configsJson.projects.current.defaultLocale = occToolsProjectJson.defaultLocale || "en";
     configsJson.projects.current.locales = occToolsProjectJson.locales;
 
-    updateConfigs(configsJson, 'Environment', function(error) {
-      if(error) {
-        cb(error);
-        return;
-      }
+    removeLoginToken(function () {
+      updateConfigs(configsJson, 'Environment', function(error) {
+        if(error) {
+          cb(error);
+          return;
+        }
 
-      self.setEnvCredentials({
-        projectName: configsJson.projects.current.name,
-        env: env
-      }, cb);
+        self.setEnvCredentials({
+          projectName: configsJson.projects.current.name,
+          env: env
+        }, cb);
+      });
     });
   });
 };
@@ -316,20 +318,19 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
       envCredentials.username = getCredentialValue(credentialsObject, envCredentials, 'username');
       envCredentials.password = getCredentialValue(credentialsObject, envCredentials, 'password');
       envCredentials['application-key'] = getCredentialValue(credentialsObject, envCredentials, 'application-key');
-      envCredentials.mfaSecret = getCredentialValue(credentialsObject, envCredentials, 'mfaSecret');
+      envCredentials['secret'] = getCredentialValue(credentialsObject, envCredentials, 'secret');
 
       if(changeCurrent) {
         configsJson.projects.current.credentials.username = getCredentialValue(credentialsObject, envCredentials, 'username');
         configsJson.projects.current.credentials.password = getCredentialValue(credentialsObject, envCredentials, 'password');
         configsJson.projects.current.credentials['application-key'] = getCredentialValue(credentialsObject, envCredentials, 'application-key');
-        configsJson.projects.current.credentials.mfaSecret = getCredentialValue(credentialsObject, envCredentials, 'mfaSecret');
+        configsJson.projects.current.credentials['secret'] = getCredentialValue(credentialsObject, envCredentials, 'secret');
       }
 
       updateConfigs(configsJson, 'Environment credentials', cb);
     };
 
-    // new env
-    if(!options.force && !envCredentials.username && !envCredentials.password && !envCredentials['application-key']) {
+    if(!options.force && !envCredentials.username && !envCredentials.password && !envCredentials['application-key'] && !envCredentials['secret']) {
       var schema = setPromptSchema({
         properties: {
           username: {
@@ -343,15 +344,15 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
             required: true,
             message: 'Please type a your OCC enviroment password'
           },
-          mfaSecret: {
-            description: 'OCC environment MFA secret',
-            required: true,
-            message: 'Please type a your OCC enviroment MFA secret'
-          },
           'application-key': {
             description: 'OCC Application Key(Optional)',
             required: false,
             message: 'Please type a your OCC enviroment application key'
+          },
+          secret: {
+            description: 'OCC Two-factor Authentication (2FA) secret key',
+            required: true,
+            message: 'Please type a your OCC enviroment 2FA Secret key'
           }
         }
       });
@@ -372,13 +373,41 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
     }
 
     // changing env
-    if(!options.force && ((envCredentials.username && envCredentials.password) || envCredentials['application-key'])) {
+    if(!options.force && ((envCredentials.username && envCredentials.password) || envCredentials['application-key'] || envCredentials['secret'])) {
       updateCredentials({
         username: envCredentials.username,
         password: envCredentials.password,
-        mfaSecret: envCredentials.mfaSecret,
-        'application-key': options['application-key'] || ""
+        'application-key': options['application-key'] || "",
+        secret: options.secret || envCredentials.secret
       }, true);
+      return;
+    }
+
+    // 2FA Secret is required
+    if(!envCredentials['secret']) {
+      winston.info("You need to set the 2FA secret for this env.\n");
+
+      var schema = setPromptSchema({
+        properties: {
+          secret: {
+            description: 'OCC Two-factor Authentication (2FA) secret key',
+            required: true,
+            message: 'Please type a your OCC enviroment 2FA Secret key'
+          }
+        }
+      });
+
+      prompt.start();
+      prompt.get(schema, function (error, result) {
+        if(error) {
+          winston.error(error);
+          cb(error);
+          return;
+        }
+
+        updateCredentials(result, true);
+      });
+
       return;
     }
 
@@ -387,8 +416,8 @@ Configs.prototype.setEnvCredentials = function (options, cb) {
       updateCredentials({
         username: options.username,
         password: options.password,
-        mfaSecret: options.mfaSecret,
-        'application-key': options['application-key'] || ""
+        'application-key': options['application-key'] || "",
+        secret: options.secret || envCredentials.secret
       }, true);
       return;
     }
@@ -477,6 +506,34 @@ Configs.prototype.getCurrentIP = function () {
   });
 
   return addresses.length > 1 ? '127.0.0.1' : addresses[0];
+};
+
+Configs.prototype.getProjectSettings = function (cb) {
+  cb = cb || function () {};
+  var configsJson;
+
+  try {
+    configsJson = fs.readJsonSync(configsFile);
+  } catch(error) {
+    winston.error('Error on trying to load configsJson file');
+    winston.error(error);
+    return false;
+  }
+
+  var projectPath = configsJson.projects.current.path;
+  var occToolsProjectPathFile = path.join(projectPath, 'occ-tools.project.json');
+  var occToolsProjectJson = {};
+
+  try {
+    occToolsProjectJson = fs.readJsonSync(occToolsProjectPathFile);
+  } catch(error) {
+    winston.error('The "occ-tools.project.json" doesn\'t exist at ' + projectPath);
+    return false;
+  }
+
+  var projectSettings = occToolsProjectJson['project-settings'] || {};
+  cb(projectSettings);
+  return projectSettings;
 };
 
 module.exports = Configs;

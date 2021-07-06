@@ -21,7 +21,7 @@ function Compiler() {
     defaultWidgetPathName: 'widgets',
     defaultWidgetCompanyName: 'objectedge',
     occToolsModulesPath: path.join(appConfig.occToolsPath, '..', 'node_modules'),
-    externalsPattern: /^((\/file)|(\/oe-files)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/,
+    externalsPattern: /^((\/file)|(\/oe-files)|(\/ccstorex?)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/,
     occComponentsTempDir: path.join(appConfig.dir.project_root, '.occ-components', 'widgets'),
     occWidgetCoreName: 'widget-core',
     occWidgetCoreImport: 'occ-components/widget-core'
@@ -146,6 +146,10 @@ Compiler.prototype.defineCompiler = function (done) {
     output: {
       comments: false
     }
+  }));
+
+  plugins.push(new webpack.DefinePlugin({
+    __ASSETS_VERSION__: `"${appConfig.assetsVersion}"`
   }));
 
   var entries = {};

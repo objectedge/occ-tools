@@ -12,6 +12,9 @@ var Cache = require('./cache');
 var execSync = require('child_process').execSync;
 
 var config = require('../config');
+var projectSettingsAppLevel = config.projectSettings['app-level-config'] || {};
+var projectSettingsFiles = config.projectSettings['files-config'] || [];
+
 var Bundler = require('../bundler');
 
 //We're requiring our own cheerio because hoxy aren't loading
@@ -269,6 +272,26 @@ function createJsBundleIndexFile(filesList) {
   return appLevelIndexTemplate;
 }
 
+OCCProxy.prototype.getTopBannerFileContent = function () {
+  if(projectSettingsAppLevel['file-top-banner']) {
+    var topBannerFilePath = projectSettingsAppLevel['file-top-banner'];
+
+    try {
+      var topBannerFile = UglifyJS.minify(path.join(config.dir.project_base, topBannerFilePath));
+      return topBannerFile ? topBannerFile.code : '';
+    } catch(error) {
+      winston.error('The "topBanner" for app level has not been found ' + topBannerFilePath);
+      return '';
+    }
+  }
+
+  return '';
+}
+
+OCCProxy.prototype.getFileSetting = function (source) {
+  return projectSettingsFiles.find(file => path.join(config.dir.project_root, file.path) === source) || {};
+}
+
 function bundleAppLevel(appLevelPath, appLevelName, done) {
   var proxyInstance = this;
   var occToolsModulesPath = path.join(config.occToolsPath, '..' ,'node_modules');
@@ -288,6 +311,18 @@ function bundleAppLevel(appLevelPath, appLevelName, done) {
   var outputPath = path.join(config.dir.project_root, '.occ-transpiled', 'app-level', appLevelName);
   var outputFile = path.join(outputPath, appLevelName + '.js');
 
+  var topBannerFile = proxyInstance.getTopBannerFileContent();
+  if(topBannerFile) {
+    topBannerFile = topBannerFile.replace(/__ASSETS_VERSION__/g, config.assetsVersion);
+    plugins.push(new webpack.BannerPlugin(topBannerFile, {
+      raw: true
+    }));
+  }
+
+  plugins.push(new webpack.DefinePlugin({
+    __ASSETS_VERSION__: `"${config.assetsVersion}"`
+  }));
+
   var webpackConfigs = {
     resolveLoader: {
       root: [
@@ -301,7 +336,7 @@ function bundleAppLevel(appLevelPath, appLevelName, done) {
       libraryTarget: "amd"
     },
     externals: [
-      /^((\/file)|(\/oe-files)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/
+      /^((\/file)|(\/oe-files)|(\/ccstorex?)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/
     ],
     module: {
       loaders: [{
@@ -348,6 +383,7 @@ function bundleAppLevel(appLevelPath, appLevelName, done) {
 }
 
 OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, done) {
+  var proxyInstance = this;
   var filesList = [];
   var outputPath = path.join(config.dir.project_root, '.occ-transpiled', 'app-level', appLevelName);
   var appLevelEntry = path.join(outputPath, 'index.js');
@@ -407,10 +443,99 @@ OCCProxy.prototype.transpileAppLevel = function (appLevelName, appLevelPath, don
         return;
       }
 
-      bundleAppLevel(outputPath, appLevelName, done);
+      bundleAppLevel.call(proxyInstance, outputPath, appLevelName, done);
     });
   });
 };
+
+/**
+* Bundle JS file
+* @param {Object} params options
+* @param {String} params.source main source
+* @param {Object} params.fileSettings the settings for the file
+* @param  {Function} done   on done the process
+*/
+OCCProxy.prototype.transpileExtraRoute = function ({ source, fileSettings }, done) {
+  var occToolsModulesPath = path.join(config.occToolsPath, '..', 'node_modules');
+
+  var plugins = [];
+  plugins.push(new webpack.dependencies.LabeledModulesPlugin());
+  plugins.push(new webpack.optimize.UglifyJsPlugin({
+    compress: {
+      warnings: false
+    },
+    output: {
+      comments: false
+    }
+  }));
+
+  var entryFile = source;
+  var fileName = path.basename(entryFile);
+  var outputPath = path.join(config.dir.project_root, '.occ-transpiled', 'files');
+  var outputFile = path.join(outputPath, fileName);
+  var libraryTarget = fileSettings.libraryTarget ? fileSettings.libraryTarget : 'amd';
+
+  plugins.push(new webpack.DefinePlugin({
+    __ASSETS_VERSION__: `"${config.assetsVersion}"`
+  }));
+
+  var webpackConfigs = {
+    resolveLoader: {
+      root: [
+        occToolsModulesPath
+      ]
+    },
+    entry: entryFile,
+    output: {
+      path: outputPath,
+      filename: fileName,
+      libraryTarget: libraryTarget
+    },
+    externals: [
+      /^((\/file)|(\/oe-files)|(\/ccstorex?)|(?!\.{1}|occ-components|(.+:\\)|\/{1}[a-z-A-Z0-9_.]{1})).+?$/
+    ],
+    module: {
+      loaders: [{
+        test: /\.js$/,
+        loader: 'babel-loader',
+        include: [
+          config.dir.project_root
+        ],
+        query: {
+          presets: [path.join(occToolsModulesPath, 'babel-preset-es2015')],
+          plugins: [
+            path.join(occToolsModulesPath, 'babel-plugin-transform-decorators-legacy'),
+            path.join(occToolsModulesPath, 'babel-plugin-transform-class-properties')
+          ],
+          cacheDirectory: true
+        }
+      }]
+    },
+    plugins: plugins,
+    devtool: '#eval-source-map'
+  };
+
+  var bundler = webpack(webpackConfigs);
+
+  bundler.watch({
+    aggregateTimeout: 300,
+    poll: false
+  }, function (error, stats) {
+    if (error) {
+      done(error, null);
+      return;
+    }
+
+    winston.info('\n\n');
+    winston.info('[bundler:compile] Changes ----- %s ----- \n', new Date());
+    winston.info('[bundler:compile] %s', stats.toString({
+      chunks: true, // Makes the build much quieter
+      colors: true
+    }));
+
+    done(null, outputFile, stats);
+  });
+}
 
 OCCProxy.prototype.setWidgetsTranspiler = function (widgetsList, done) {
   var proxyInstance = this;
@@ -633,6 +758,10 @@ OCCProxy.prototype.setRoute = function (options) {
     //Only process the request if it has a success code
     if(options.onlySuccessCode && !proxyInstance.isSuccessCode(resp.statusCode)) {
       return;
+    }
+
+    if(options.headerResponse) {
+      resp.headers = options.headerResponse;
     }
 
     //Fixing the problem about HPE_UNEXPECTED_CONTENT_LENGTH

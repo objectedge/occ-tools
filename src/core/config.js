@@ -2,7 +2,6 @@ var path = require('path');
 var fs = require('fs-extra');
 var os = require('os');
 var occToolsConfigsCore = new (require('./configs'));
-
 var configsDir = occToolsConfigsCore.getConfigsDir();
 var configsFilePath = occToolsConfigsCore.getConfigsFilePath();
 var configsData = occToolsConfigsCore.getConfigsJSON();
@@ -11,17 +10,18 @@ if(!configsData) {
   process.exit();
 }
 
+var projectSettings = occToolsConfigsCore.getProjectSettings();
 var currentIP = occToolsConfigsCore.getCurrentIP();
 var baseUrl = configsData.projects.current.url;
 var username = configsData.projects.current.credentials.username;
 var password = configsData.projects.current.credentials.password;
-var mfaSecret = configsData.projects.current.credentials.mfaSecret;
 var applicationKey = configsData.projects.current.credentials['application-key'];
+var twoFASecretKey = configsData.projects.current.credentials['secret'];
 var storefrontDir = configsData.projects['storefront-dir'];
 var absoluteStorefrontDir = path.join(configsData.projects.current.path, storefrontDir);
 
-var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : true;
-var useApplicationKey = typeof configsData['use-application-key'] !== 'undefined' ? configsData['use-application-key'] : false;
+var useMFALogin = typeof configsData['use-mfa-login'] !== 'undefined' ? configsData['use-mfa-login'] : false;
+var useApplicationKey = typeof configsData['use-application-key'] !== 'undefined' ? configsData['use-application-key'] : true;
 
 var loginHeaderAuth =  {
   'Authorization': 'Bearer ' + applicationKey
@@ -31,8 +31,8 @@ var loginCredentialsMFA = {
   grant_type: 'password',
   username: username,
   password: password,
-  mfaSecret: mfaSecret,
-  totp_code: configsData['totp-code']
+  totp_code: configsData['totp-code'],
+  secret: twoFASecretKey
 };
 
 var loginCredentialsApplicationKey = {
@@ -114,6 +114,9 @@ if(envDetailsFromProject) {
 
 var databaseDir = path.join(configsDir, 'database');
 fs.ensureDirSync(databaseDir);
+
+// Defines the assets version, this can be used in the store to control the cache
+var assetsVersion = process.env.ASSETS_VERSION || require(path.join(configsData.projects.current.path, 'package.json')).version;
 
 var _configDescriptor = {
   project_name: configsData.projects.current.name,
@@ -219,7 +222,9 @@ var _configDescriptor = {
     port: 8001
   },
   OCC_DEFAULT_LIMIT: 250,
-  currentIP: currentIP
+  currentIP: currentIP,
+  projectSettings: projectSettings,
+  assetsVersion: `${assetsVersion}${new Date().getTime()}`
 };
 
 _configDescriptor.github = {

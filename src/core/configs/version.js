@@ -13,7 +13,7 @@ function wait(delay) {
 module.exports = async function () {
   try {
     const baseOccToolsPath = path.join(__dirname, '..', '..', '..');
-    const hash = await git.resolveRef({ fs, dir: baseOccToolsPath, ref: 'master' });
+    const hash = await git.resolveRef({ fs, dir: baseOccToolsPath, ref: 'oct-cli' });
     const packageJsonResponse = await git.readObject({
       fs,
       dir: baseOccToolsPath,
@@ -33,8 +33,6 @@ module.exports = async function () {
         { color: 'blue', message: 'Please run git pull inside the occ-tools and npm install' },
         { color: 'magenta', message: 'Check the changelog in the occ-tools repository.' }
       );
-
-      await wait(2000);
     }
   } catch(error) {
     winston.error(error);

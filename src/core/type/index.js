@@ -1,58 +1,60 @@
-"use strict";
+'use strict';
 
-const Auth = require("../auth");
-const OCC = require("../occ");
-const config = require("../config");
-const _download = require("./download");
+const winston = require('winston');
+const Auth = require('../auth');
+const OCC = require('../occ');
+const config = require('../config');
+const _download = require('./download');
+const _upload = require('./upload');
 
 const allowedTypes = {
-  order: ["order"],
-  shopper: ["user"],
-  product: ["metadata", "product"],
+  order: ['order'],
+  shopper: ['user'],
+  product: ['metadata', 'product'],
   item: [
-    "commerceItem",
-    "organization",
-    "promotion",
-    "gift-list",
-    "organizationRequest",
-    "profileRequest",
-    "userSiteProperties",
-    "profileAgentComment",
-    "orderAgentComment",
-    "loyaltyPrograms",
-    "mailing",
-    "contactInfo",
-    "creditCard",
-    "tokenizedCreditCard",
-    "hardgoodShippingGroup",
-    "electronicShippingGroup",
-    "inStorePickupShippingGroup",
-    "invoiceRequest",
-    "onlinePaymentGroup",
-    "physicalGiftCard",
-    "customCurrencyPaymentGroup",
-    "quoteInfo",
-    "returnComment",
-    "returnItem",
-    "inStoreTakeWithShippingGroup",
-    "category",
-    "appeasement",
-    "appeasementComment",
-    "appeasementRefund",
-    "externalAppeasementRefund",
-    "creditCardAppeasementRefund",
-    "storeCreditAppeasementRefund",
-    "tokenizedCreditCardAppeasementRefund",
-    "onlinePaymentGroupAppeasementRefund",
-    "physicalGiftCardAppeasementRefund",
-    "customCurrencyAppeasementRefund",
+    'commerceItem',
+    'organization',
+    'promotion',
+    'gift-list',
+    'organizationRequest',
+    'profileRequest',
+    'userSiteProperties',
+    'profileAgentComment',
+    'orderAgentComment',
+    'loyaltyPrograms',
+    'mailing',
+    'contactInfo',
+    'creditCard',
+    'tokenizedCreditCard',
+    'hardgoodShippingGroup',
+    'electronicShippingGroup',
+    'inStorePickupShippingGroup',
+    'invoiceRequest',
+    'onlinePaymentGroup',
+    'physicalGiftCard',
+    'customCurrencyPaymentGroup',
+    'quoteInfo',
+    'returnComment',
+    'returnItem',
+    'inStoreTakeWithShippingGroup',
+    'category',
+    'appeasement',
+    'appeasementComment',
+    'appeasementRefund',
+    'externalAppeasementRefund',
+    'creditCardAppeasementRefund',
+    'storeCreditAppeasementRefund',
+    'tokenizedCreditCardAppeasementRefund',
+    'onlinePaymentGroupAppeasementRefund',
+    'physicalGiftCardAppeasementRefund',
+    'customCurrencyAppeasementRefund',
   ],
 };
 
 const getSubType = (mainType, subType) => {
   if (subType) {
     return subType;
-  } else if (mainType == "order" || mainType == "shopper") {
+  } else if (mainType == 'order' || mainType == 'shopper') {
     return allowedTypes[mainType][0];
   } else {
     return null;
@@ -61,7 +63,7 @@ const getSubType = (mainType, subType) => {
 
 function Type(environment, options) {
   if (!environment) {
-    throw new Error("OCC environment not defined.");
+    throw new Error('OCC environment not defined.');
   }
 
   this._environment = environment;
@@ -71,9 +73,29 @@ function Type(environment, options) {
   this.options = options;
 }
 
-Type.prototype.download = function (mainType, subType) {
-  return _download.call(
-    this,
+Type.prototype.download = async function (mainType, subType) {
+  if (!this.isMainTypeAllowed(mainType)) {
+    throw new Error('Type not allowed. Allowed types are order, shopper, product, item');
+  }
+
+  const isAllowed = await this.isSubTypeAllowed(mainType, subType);
+  if (!isAllowed) {
+    throw new Error('Sub type does not exist');
+  }
+
+  await _download(
+    this._occ,
+    mainType,
+    getSubType(mainType, subType),
+    allowedTypes
+  );
+
+  winston.info('Download types finished!');
+};
+
+Type.prototype.upload = function (mainType, subType) {
+  return _upload(
+    this._occ,
     mainType,
     getSubType(mainType, subType),
     allowedTypes
@@ -88,13 +110,13 @@ Type.prototype.isSubTypeAllowed = function (mainType, subType) {
   const type = getSubType(mainType, subType);
   if (!type) return Promise.resolve(true);
 
-  if (mainType == "product") {
+  if (mainType == 'product') {
     if (allowedTypes[mainType].includes(type)) {
       return Promise.resolve(true);
     }
 
     return this._occ
-      .promisedRequest("productTypes")
+      .promisedRequest('productTypes')
       .then(
         (response) =>
           !!response.items.find((productType) => productType.id === type)

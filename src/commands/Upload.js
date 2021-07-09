@@ -3,10 +3,10 @@ var fs = require('fs-extra');
 var glob = require('glob');
 var path = require('path');
 
-
 var Cmdln = require('cmdln').Cmdln;
 var winston = require('winston');
 
+const promisedCommand = require('./utils/promisedCommand');
 var Theme = require('../core/theme');
 var Widget = require('../core/widget');
 var Search = require('../core/search');
@@ -16,6 +16,7 @@ var AppLevel = require('../core/app-level');
 var Files = require('../core/files');
 var ServerSideExtension = require('../core/server-side-extension');
 var ResponseFilter = require('../core/response-filter');
+var Type = require('../core/type');
 
 var config = require('../core/config');
 
@@ -287,7 +288,7 @@ Upload.prototype.do_appLevel = function(subcmd, opts, args, callback) {
     return callback(error);
   });
 
-  
+
   appLevel.upload(appLevelNames, opts, callback);
 };
 
@@ -419,5 +420,21 @@ Upload.prototype.do_sse_variables.options = [
     help: '(Optional) File path where the variables are stored.'
   }
 ];
+
+Upload.prototype.do_type = promisedCommand(async function (subcmd, opts, args) {
+  const [mainType, subType] = args;
+  const type = new Type('admin');
+
+  if (mainType === 'product') {
+    throw new Error('Product types not supported yet');
+  }
+
+  await type.upload(mainType, subType);
+});
+
+Upload.prototype.do_type.help =
+  'Upload types to OCC.\n\n' +
+  '     {{name}} {{cmd}} <type> <subtype> \n\n' +
+  '{{options}}';
 
 module.exports = Upload;

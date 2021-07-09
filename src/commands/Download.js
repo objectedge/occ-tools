@@ -2,6 +2,7 @@ var util = require('util');
 var Cmdln = require('cmdln').Cmdln;
 var winston = require('winston');
 
+const promisedCommand = require('./utils/promisedCommand');
 var Theme = require('../core/theme');
 var Widget = require('../core/widget');
 var Search = require('../core/search');
@@ -460,28 +461,13 @@ Download.prototype.do_text_snippet.help =
   '     {{name}} {{cmd}} <locales> [options] \n\n' +
   '{{options}}';
 
-Download.prototype.do_type = function (subcmd, opts, args, callback) {
+
+Download.prototype.do_type = promisedCommand(async function (subcmd, opts, args) {
   const [mainType, subType]  = args;
   const type = new Type('admin');
 
-  if (!type.isMainTypeAllowed(mainType)) {
-    return callback(`Type not allowed. Allowed types are order, shopper, product, item`);
-  }
-
-  type.isSubTypeAllowed(mainType, subType)
-    .then(isAllowed => {
-      if (!isAllowed) {
-        return callback(`Sub type does not exist`);
-      }
-
-      type.download(mainType, subType)
-        .then(() => {
-          winston.info('Download types finished!');
-          callback();
-        }).catch(e => callback(e));
-    })
-    .catch(e => callback(e));
-};
+  await type.download(mainType, subType);
+});
 
 Download.prototype.do_type.help =
   'Download types from OCC.\n\n' +

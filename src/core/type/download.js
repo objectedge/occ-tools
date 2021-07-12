@@ -3,14 +3,18 @@ const fs = require('fs-extra');
 const path = require('path');
 
 const config = require('../config');
-
-const PROPERTIES_TO_REMOVE_DEFAULT = ['registrationDate', 'lastPasswordUpdate'];
+const {
+  PRODUCT_TYPE_METADATA,
+  PRODUCT_TYPE,
+  SHOPPER_TYPE,
+  SHOPPER_PROPERTIES_TO_REMOVE_DEFAULT,
+} = require('../utils/constants');
 
 const formatResponse = (mainType, response) => {
   delete response.links;
-  if (mainType === 'shopper') {
+  if (mainType === SHOPPER_TYPE) {
     Object.keys(response.properties).forEach(property => {
-      if (PROPERTIES_TO_REMOVE_DEFAULT.includes(property)) {
+      if (SHOPPER_PROPERTIES_TO_REMOVE_DEFAULT.includes(property)) {
         delete response.properties[property].default;
       }
     });
@@ -22,7 +26,7 @@ const formatResponse = (mainType, response) => {
 const getType = (occ, mainType, subType) => {
   winston.info(`Fetching ${mainType} type [${subType}]...`);
   let url = `${mainType}Types/${subType}`;
-  if (mainType === 'product' && subType === 'metadata') {
+  if (mainType === PRODUCT_TYPE && subType === PRODUCT_TYPE_METADATA) {
     url = 'metadata/product';
   }
 
@@ -46,7 +50,7 @@ const downloadTypes = (occ, mainType, subTypes) => {
 module.exports = async (occ, mainType, subType, allowedTypes) => {
   if (!subType) {
     const subTypes = allowedTypes[mainType];
-    if (mainType === 'product') {
+    if (mainType === PRODUCT_TYPE) {
       const productTypes = await occ.promisedRequest('productTypes');
       const typesToDownload = subTypes.concat(productTypes.items.map((t) => t.id));
 

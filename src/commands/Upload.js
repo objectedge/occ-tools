@@ -421,17 +421,35 @@ Upload.prototype.do_sse_variables.options = [
   }
 ];
 
-Upload.prototype.do_type = promisedCommand(async function (subcmd, opts, args) {
+Upload.prototype.do_type = promisedCommand(async function (command, options, args) {
   const [mainType, subType] = args;
   const type = new Type('admin');
 
-  await type.upload(mainType, subType);
+  await type.upload(mainType, subType, options);
   winston.info('Upload process finished');
 });
 
 Upload.prototype.do_type.help =
   'Upload types to OCC.\n\n' +
+  'Usage:\n' +
   '     {{name}} {{cmd}} <type> <subtype> \n\n' +
   '{{options}}';
+
+Upload.prototype.do_type.options = [
+  {
+    names: ['allowNonUnderscoreNames', 'u'],
+    helpArg: '[allow-non-underscore-names]',
+    type: 'bool',
+    default: false,
+    help: '(Optional) If true, allow the creation of custom property names that do not contain an underscore(\'_\') - default: false.'
+  },
+  {
+    names: ['notUploadVariantValues', 'n'],
+    helpArg: '[not-upload-variant-values]',
+    type: 'bool',
+    default: false,
+    help: '(Optional) If true, send values to variants - default: true'
+  }
+];
 
 module.exports = Upload;

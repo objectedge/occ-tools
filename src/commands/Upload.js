@@ -425,11 +425,8 @@ Upload.prototype.do_type = promisedCommand(async function (subcmd, opts, args) {
   const [mainType, subType] = args;
   const type = new Type('admin');
 
-  if (mainType === 'product') {
-    throw new Error('Product types not supported yet');
-  }
-
   await type.upload(mainType, subType);
+  winston.info('Upload process finished');
 });
 
 Upload.prototype.do_type.help =

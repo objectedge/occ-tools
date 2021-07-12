@@ -31,7 +31,7 @@ const getType = (occ, mainType, subType) => {
 
 const downloadType = async (occ, mainType, subType) => {
   const content = await getType(occ, mainType, subType);
-  storeType(mainType, subType, content)
+  storeType(mainType, subType, content);
 };
 
 const storeType = (mainType, subType, content) => {
@@ -60,6 +60,7 @@ module.exports = async (occ, mainType, subType, allowedTypes) => {
 };
 
 module.exports = Object.assign(module.exports, {
+  downloadType,
   getType,
   storeType
 });

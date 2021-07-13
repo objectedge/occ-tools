@@ -61,14 +61,12 @@ const uploadProperties = async (propertySpec, type, localPropertyList, remotePro
   }
 };
 
-const uploadShopperInputs = async (propertySpec, type, localPropertyList, remotePropertyList, occ) => {
-
-  await uploadProperties(propertySpec, type, localPropertyList, remotePropertyList, occ);
+const uploadShopperInputs = async (propertySpec, type, localPropertyList, remotePropertyList, occ, options) => {
+  await uploadProperties(propertySpec, type, localPropertyList, remotePropertyList, occ, {});
   const localPropertiesKeys = localPropertyList.map(p => p.id);
   const remotePropertiesKeys = remotePropertyList.map(p => p.id);
 
   const newProperties = localPropertiesKeys.filter(property => !remotePropertiesKeys.includes(property));
-  // const removedProperties = remotePropertiesKeys.filter(property => !localPropertiesKeys.includes(property));
 
   for (const property of newProperties) {
     const payload = {
@@ -86,20 +84,61 @@ const uploadShopperInputs = async (propertySpec, type, localPropertyList, remote
       winston.error(e);
     }
   }
+};
 
-  // for (const property of removedProperties) {
-  //   const payload = {
-  //     api: `productTypes/${type}/shopperInputs/${property}`,
-  //     method: 'delete'
-  //   };
+const alternateLocaleUploader = async (propertySpec, type, localPropertyList, remotePropertyList, occ, options, locale) => {
+  const { api, display } = propertySpec;
+  const localProperties = arrayToMapById(localPropertyList);
+  const remoteProperties = arrayToMapById(remotePropertyList);
 
-  //   try {
-  //     await occ.promisedRequest(payload);
-  //   } catch (e) {
-  //     winston.error(`Error removing shopper input ${property} from product type ${type}...`);
-  //     winston.error(e);
-  //   }
-  // }
+  const changedProperties = getChangedProperties(localProperties, remoteProperties);
+
+  if (!changedProperties.length) {
+    winston.info(`No ${display} to update for [${locale}] locale`);
+  }
+
+  for (const property of changedProperties) {
+    const { id } = property;
+
+    if (property.localizedValues) {
+      property.values = { ...property.localizedValues };
+      delete property.localizedValues;
+    }
+
+    delete property.id;
+
+    if (options.notUploadVariantValues) {
+      delete property.values;
+      delete property.localizedValues;
+    }
+
+    if (!Object.keys(property).length) {
+      continue;
+    }
+
+    winston.info(`Updating ${display} ${id} of product type ${type} for [${locale}] locale...`);
+
+    const payload = {
+      api: `${api}/${id}`,
+      method: constants.HTTP_METHOD_PUT,
+      headers: { [constants.OCC_LANGUAGE_HEADER]: locale },
+      body: {
+        productTypeId: type === constants.PRODUCT_TYPE_METADATA ? constants.BASE_PRODUCT_TYPE : type,
+        ...property
+      }
+    };
+
+    if (options.allowNonUnderscoreNames) {
+      payload.api = `${payload.api}?=allowNonUnderscoreNames=true`;
+    }
+
+    try {
+      await occ.promisedRequest(payload);
+    } catch (e) {
+      winston.error(`Error creating ${display} ${id} of product type ${type} for [${locale}] locale...`);
+      winston.error(e);
+    }
+  }
 };
 
 const propertiesToProcess = [
@@ -136,5 +175,6 @@ const propertiesToProcess = [
 ];
 
 module.exports = {
-  propertiesToProcess
+  propertiesToProcess,
+  alternateLocaleUploader
 };

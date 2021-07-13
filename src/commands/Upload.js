@@ -448,7 +448,7 @@ Upload.prototype.do_type.options = [
     helpArg: '[not-upload-variant-values]',
     type: 'bool',
     default: false,
-    help: '(Optional) If true, send values to variants - default: true'
+    help: '(Optional) If true, send values to variants - default: false'
   }
 ];
 

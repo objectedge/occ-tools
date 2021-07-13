@@ -3,22 +3,15 @@ const path = require('path');
 const { isEqual } = require('lodash');
 
 const config = require('../config');
-const { downloadType, getType, storeType } = require('./download');
+const { downloadType, getType, formatResponse } = require('./download');
 const { getChangedProperties, getProperties } = require('./changedProperties');
-const { propertiesToProcess } = require('./productProperties');
+const { propertiesToProcess, alternateLocaleUploader } = require('./productProperties');
 const {
   compareObjects,
   arrayToMapById,
   constants,
   readJsonFile
 } = require('../utils');
-
-/*
-TODO:
-- validate entries
-- handle locales
-- optinally, remove product properties
-*/
 
 const buildPayload = (mainType, subType, localType, remoteType) => {
   const payload = {};
@@ -51,17 +44,18 @@ const buildPayload = (mainType, subType, localType, remoteType) => {
 };
 
 
-const uploadType = async (occ, mainType, subType, options) => {
+const uploadTypeForDefaultLocale = async (occ, mainType, subType, options) => {
+  const locale = config.defaultLocale;
   winston.info(`Uploading ${mainType} type [${subType}]...`);
 
   let remoteType = null;
   try {
-    remoteType = await getType(occ, mainType, subType);
+    remoteType = await getType(occ, mainType, subType, locale);
   } catch (e) {
     winston.info('Type not found on OCC, it will be created');
   }
 
-  const localType = await readJsonFile(path.join(config.dir.types_root, mainType, `${subType}.json`));
+  const localType = await readJsonFile(path.join(config.dir.types_root, mainType, subType, `${subType}.${locale}.json`));
 
   const body = buildPayload(mainType, subType, localType, remoteType);
 
@@ -69,7 +63,7 @@ const uploadType = async (occ, mainType, subType, options) => {
     const payload = {
       api: remoteType ? `${mainType}Types/${subType}` : `${mainType}Types`,
       method: remoteType ? constants.HTTP_METHOD_PUT : constants.HTTP_METHOD_PUT,
-      headers: { [constants.OCC_LANGUAGE_HEADER]: config.defaultLocale },
+      headers: { [constants.OCC_LANGUAGE_HEADER]: locale },
       body
     };
 
@@ -77,10 +71,7 @@ const uploadType = async (occ, mainType, subType, options) => {
       payload.api = `${payload.api}?=allowNonUnderscoreNames=true`;
     }
 
-    const response = await occ.promisedRequest(payload);
-    if (mainType !== constants.PRODUCT_TYPE) {
-      storeType(mainType, subType, response);
-    }
+    await occ.promisedRequest(payload);
   } else {
     winston.warn('Local type equal to remote type, skipping update');
   }
@@ -92,9 +83,53 @@ const uploadType = async (occ, mainType, subType, options) => {
         await uploader(property, subType, localType[name], remoteType[name], occ, options);
       }
     }
-
-    await downloadType(occ, mainType, subType);
   }
+};
+
+const uploadTypeForAlternateLocale = async (occ, mainType, subType, options, locale) => {
+  winston.info(`Uploading ${mainType} type [${subType}] for [${locale}] locale...`);
+
+  let remoteType = formatResponse(mainType, await getType(occ, mainType, subType, locale), locale);
+  const localType = await readJsonFile(path.join(config.dir.types_root, mainType, subType, `${subType}.${locale}.json`));
+
+  const body = buildPayload(mainType, subType, localType, remoteType);
+
+  if (body) {
+    const payload = {
+      api: remoteType ? `${mainType}Types/${subType}` : `${mainType}Types`,
+      method: remoteType ? constants.HTTP_METHOD_PUT : constants.HTTP_METHOD_PUT,
+      headers: { [constants.OCC_LANGUAGE_HEADER]: locale },
+      body
+    };
+
+    if (payload.allowNonUnderscoreNames) {
+      payload.api = `${payload.api}?=allowNonUnderscoreNames=true`;
+    }
+
+    await occ.promisedRequest(payload);
+  } else {
+    winston.warn(`Local type equal to remote type for locale ${locale}, skipping update`);
+  }
+
+  if (mainType === constants.PRODUCT_TYPE) {
+    for (const property of propertiesToProcess) {
+      const { name } = property;
+      if (localType[name]) {
+        await alternateLocaleUploader(property, subType, localType[name], remoteType[name], occ, options, locale);
+      }
+    }
+  }
+};
+
+const uploadType = async (occ, mainType, subType, options) => {
+  await uploadTypeForDefaultLocale(occ, mainType, subType, options);
+  await Promise.all(config.locales.map(locale => {
+    if (locale !== config.defaultLocale) {
+      return uploadTypeForAlternateLocale(occ, mainType, subType, options, locale);
+    }
+  }));
+
+  await await downloadType(occ, mainType, subType);
 };
 
 const uploadTypes = (occ, mainType, subTypes, options) => {

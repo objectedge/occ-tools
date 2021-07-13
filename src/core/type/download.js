@@ -8,11 +8,26 @@ const {
   PRODUCT_TYPE,
   SHOPPER_TYPE,
   SHOPPER_PROPERTIES_TO_REMOVE_DEFAULT,
+  OCC_LANGUAGE_HEADER,
+  HTTP_METHOD_GET,
+  ORDER_TYPE,
+  ITEM_TYPE,
+  LOCALIZABLE_ATTRIBUTES,
+  LOCALIZABLE_PRODUCT_ATTRIBUTES,
+  PRODUCT_TYPE_PROPERTIES_TYPE
 } = require('../utils/constants');
+const { mapToArrayWithId, arrayToMapById } = require('../utils');
+const { pick, omit } = require('lodash');
 
-const formatResponse = (mainType, response) => {
+const formatShopperAndOrderProperties = (properties) => {
+  const propertiesAsArray = mapToArrayWithId(properties);
+  const mappedProperties = propertiesAsArray.map(p => pick(p, LOCALIZABLE_ATTRIBUTES));
+  return arrayToMapById(mappedProperties, true);
+};
+
+const formatResponse = (type, response, locale) => {
   delete response.links;
-  if (mainType === SHOPPER_TYPE) {
+  if (type === SHOPPER_TYPE) {
     Object.keys(response.properties).forEach(property => {
       if (SHOPPER_PROPERTIES_TO_REMOVE_DEFAULT.includes(property)) {
         delete response.properties[property].default;
@@ -20,27 +35,75 @@ const formatResponse = (mainType, response) => {
     });
   }
 
-  return JSON.stringify(response, null, 2);
-};
+  if (locale !== config.defaultLocale) {
+    response = omit(response, ['propertiesOrder']);
+    switch (type) {
+      case PRODUCT_TYPE:
+        PRODUCT_TYPE_PROPERTIES_TYPE.forEach(property => {
+          if (response[property]){
+            response[property] = response[property].map(p => pick(p, LOCALIZABLE_PRODUCT_ATTRIBUTES));
+          }
+        });
 
-const getType = (occ, mainType, subType) => {
-  winston.info(`Fetching ${mainType} type [${subType}]...`);
-  let url = `${mainType}Types/${subType}`;
-  if (mainType === PRODUCT_TYPE && subType === PRODUCT_TYPE_METADATA) {
-    url = 'metadata/product';
+        if (response.variants) {
+          response.variants = response.variants.map(variant => {
+            if (!variant.localizedValues) {
+              const localizedValues = {};
+              variant.values.forEach(value => localizedValues[value] = value);
+
+              return {
+                ...variant,
+                localizedValues
+              };
+            } else {
+              return variant;
+            }
+          });
+        }
+        break;
+      case SHOPPER_TYPE:
+        response.properties = formatShopperAndOrderProperties(response.properties);
+        break;
+      case ORDER_TYPE:
+        response.properties = formatShopperAndOrderProperties(response.properties);
+        break;
+      case ITEM_TYPE:
+        response.specifications = response.specifications.map(p => pick(p, LOCALIZABLE_ATTRIBUTES));
+        break;
+    }
   }
 
-  return occ.promisedRequest(url);
+  return response;
+};
+
+const getType = (occ, mainType, subType, locale) => {
+  winston.info(`Fetching ${mainType} type [${subType}] for [${locale}] locale...`);
+  const payload = {
+    api: `${mainType}Types/${subType}`,
+    method: HTTP_METHOD_GET,
+    headers: { [OCC_LANGUAGE_HEADER]: locale}
+  };
+
+  if (mainType === PRODUCT_TYPE && subType === PRODUCT_TYPE_METADATA) {
+    payload.api = 'metadata/product';
+  }
+
+  return occ.promisedRequest(payload);
 };
 
 const downloadType = async (occ, mainType, subType) => {
-  const content = await getType(occ, mainType, subType);
-  storeType(mainType, subType, content);
+  return Promise.all(config.locales.map(async locale => {
+    const type = await getType(occ, mainType, subType, locale);
+
+    storeType(mainType, subType, type, locale);
+  }));
 };
 
-const storeType = (mainType, subType, content) => {
-  const filePath = path.join(config.dir.types_root, mainType,`${subType}.json`);
-  fs.outputFileSync(filePath, formatResponse(mainType, content));
+const storeType = (mainType, subType, response, locale) => {
+  const filePath = path.join(config.dir.types_root, mainType, subType, `${subType}.${locale}.json`);
+  const filteredResponse = formatResponse(mainType, response, locale);
+  const content = JSON.stringify(filteredResponse, null, 2);
+  fs.outputFileSync(filePath, content);
 };
 
 const downloadTypes = (occ, mainType, subTypes) => {
@@ -66,5 +129,6 @@ module.exports = async (occ, mainType, subType, allowedTypes) => {
 module.exports = Object.assign(module.exports, {
   downloadType,
   getType,
-  storeType
+  storeType,
+  formatResponse
 });

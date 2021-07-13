@@ -86,47 +86,54 @@ Type.prototype.download = async function (mainType, subType) {
     throw new Error('Type not allowed. Allowed types are order, shopper, product, item');
   }
 
-  const isAllowed = await this.isSubTypeAllowed(mainType, subType);
+  const isAllowed = await this.isSubTypeDownloadAllowed(mainType, subType);
   if (!isAllowed) {
     throw new Error('Sub type does not exist');
   }
 
-  await _download(
-    this._occ,
-    mainType,
-    getSubType(mainType, subType),
-    allowedTypes
-  );
+  await _download(this._occ, mainType, getSubType(mainType, subType), allowedTypes);
 
   winston.info('Download types finished!');
 };
 
-Type.prototype.upload = function (mainType, subType, options) {
-  return _upload(this._occ, mainType, getSubType(mainType, subType), allowedTypes, options);
+Type.prototype.upload = async function (mainType, subType, options) {
+  if (!this.isMainTypeAllowed(mainType)) {
+    throw new Error('Type not allowed. Allowed types are order, shopper, product, item');
+  }
+
+  if (!this.isSubTypeUploadAllowed(mainType, subType)) {
+    throw new Error('Sub type does not exist');
+  }
+
+  await _upload(this._occ, mainType, getSubType(mainType, subType), allowedTypes, options);
 };
 
 Type.prototype.isMainTypeAllowed = function (mainType) {
   return Object.keys(allowedTypes).includes(mainType);
 };
 
-Type.prototype.isSubTypeAllowed = function (mainType, subType) {
+Type.prototype.isSubTypeDownloadAllowed = async function (mainType, subType) {
   const type = getSubType(mainType, subType);
-  if (!type) return Promise.resolve(true);
+  if (!type) return true;
 
-  if (mainType == PRODUCT_TYPE) {
+  if (mainType === PRODUCT_TYPE) {
     if (allowedTypes[mainType].includes(type)) {
-      return Promise.resolve(true);
+      return true;
     }
 
-    return this._occ
-      .promisedRequest('productTypes')
-      .then(
-        (response) =>
-          !!response.items.find((productType) => productType.id === type)
-      );
+    const productTypes = await this._occ.promisedRequest('productTypes');
+
+    return !!productTypes.items.find((item) => item.id === type);
   } else {
-    return Promise.resolve(allowedTypes[mainType].includes(type));
+    return allowedTypes[mainType].includes(type);
   }
+};
+
+Type.prototype.isSubTypeUploadAllowed = function (mainType, subType) {
+  const type = getSubType(mainType, subType);
+  if (!type || mainType == PRODUCT_TYPE) return true;
+
+  return allowedTypes[mainType].includes(type);
 };
 
 module.exports = Type;

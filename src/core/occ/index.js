@@ -36,20 +36,12 @@ OCC.prototype.promisedRequest = function() {
     const callback = (error, body) => {
       if (error) {
         reject(error);
-      } else if (
-        body &&
-        (body.errorCode || body.error || parseInt(body.status) >= 400)
-      ) {
-
-        callback(
-          `[${body.status || "500"}] ${
-            body.message || "General error received from OCC."
-          }`
-        );
+      } else if (body && (body.errorCode || body.error || parseInt(body.status) >= 400)) {
+        callback(`[${body.status || '500'}] ${body.message || 'General error received from OCC.'}`);
       }
 
       resolve(body);
-    }
+    };
 
     _request.apply(self, [options, callback]);
   });

@@ -166,7 +166,7 @@ OccTools.prototype.fini = function (subcmd, error, callback) {
     winston.error(error);
   }
 
-  callback(error, subcmd);
+  callback(subcmd);
 };
 
 OccTools.prototype.do_env = function(subcmd, opts, args, callback) {

@@ -3,10 +3,10 @@ var fs = require('fs-extra');
 var glob = require('glob');
 var path = require('path');
 
-
 var Cmdln = require('cmdln').Cmdln;
 var winston = require('winston');
 
+const promisedCommand = require('./utils/promisedCommand');
 var Theme = require('../core/theme');
 var Widget = require('../core/widget');
 var Search = require('../core/search');
@@ -16,6 +16,7 @@ var AppLevel = require('../core/app-level');
 var Files = require('../core/files');
 var ServerSideExtension = require('../core/server-side-extension');
 var ResponseFilter = require('../core/response-filter');
+var Type = require('../core/type');
 
 var config = require('../core/config');
 
@@ -287,7 +288,7 @@ Upload.prototype.do_appLevel = function(subcmd, opts, args, callback) {
     return callback(error);
   });
 
-  
+
   appLevel.upload(appLevelNames, opts, callback);
 };
 
@@ -417,6 +418,37 @@ Upload.prototype.do_sse_variables.options = [
     helpArg: '[file]',
     type: 'string',
     help: '(Optional) File path where the variables are stored.'
+  }
+];
+
+Upload.prototype.do_type = promisedCommand(async function (command, options, args) {
+  const [mainType, subType] = args;
+  const type = new Type('admin');
+
+  await type.upload(mainType, subType, options);
+  winston.info('Upload process finished');
+});
+
+Upload.prototype.do_type.help =
+  'Upload types to OCC.\n\n' +
+  'Usage:\n' +
+  '     {{name}} {{cmd}} <type> <subtype> \n\n' +
+  '{{options}}';
+
+Upload.prototype.do_type.options = [
+  {
+    names: ['allowNonUnderscoreNames', 'u'],
+    helpArg: '[allow-non-underscore-names]',
+    type: 'bool',
+    default: false,
+    help: '(Optional) If true, allow the creation of custom property names that do not contain an underscore(\'_\') - default: false.'
+  },
+  {
+    names: ['notUploadVariantValues', 'n'],
+    helpArg: '[not-upload-variant-values]',
+    type: 'bool',
+    default: false,
+    help: '(Optional) If true, send values to variants - default: false'
   }
 ];
 

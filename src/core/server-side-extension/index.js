@@ -2,6 +2,7 @@
 
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
+const winston = require('winston');
 
 var OCC = require('../occ');
 var Auth = require('../auth');
@@ -161,6 +162,50 @@ ServerSideExtension.prototype.uploadVariables = function(variableName, options) 
       self.emit('complete', 'Server-side extension variables upload completed.');
     }
   });
+};
+
+const allItems = [];
+
+const prettyPrint = require('pino-pretty')({
+  colorize: true,
+  singleLine: true,
+  ignore: 'clusterId,meta,message,requestId',
+  translateTime: 'SYS:HH:MM:ss',
+  messageFormat: '[{requestId}] {message}',
+
+});
+
+var tailLogs = async (options, occ) => {
+  var payload = {
+    api: 'logs/tail',
+    method: 'get',
+    qs: {
+      loggingLevel: options.level,
+      date: options.date
+    }
+  };
+
+  const response = await occ.promisedRequest(payload);
+  if (typeof response === 'string') {
+    const validJSON = `[${response.replace(/\}\{/gi, "\},\{")}]`;
+
+    const newItems = JSON.parse(validJSON);
+    newItems.forEach(newItem => {
+      if (!allItems.find(oldItem => JSON.stringify(oldItem) === JSON.stringify(newItem))) {
+        allItems.push(newItem);
+        console.log(prettyPrint(newItem));
+      }
+    });
+  }
+};
+
+ServerSideExtension.prototype.tailLogs = function (options) {
+  const self = this;
+
+  tailLogs(options, self._occ);
+  setInterval(async() => {
+    await tailLogs(options, self._occ);
+  }, options.interval);
 };
 
 module.exports = ServerSideExtension;

@@ -198,7 +198,7 @@ function tryToRequest(config, token, fileToken, maxAttempts, callback) {
             return callback(err.message + '\n\n Try to use a different Auth Method such as TOTP CODE or APP KEY');
           }
 
-          return callback();
+          return callback(err);
         } else if (responseStatus === 401) {
           return loginAttempt(callback);
         } else {

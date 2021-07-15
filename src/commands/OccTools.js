@@ -32,6 +32,8 @@ var Deploy = require('./Deploy.js');
 var Instance = require('./Instance.js');
 var LocalServer = require('./LocalServer.js');
 var Environment = require('../core/env');
+var Tail = require('./Tail.js');
+
 
 function OccTools(logger) {
   this.logger = logger;
@@ -239,5 +241,6 @@ OccTools.prototype.do_user_commands = UserCommands;
 OccTools.prototype.do_compile = Compile;
 OccTools.prototype.do_configs = Configs;
 OccTools.prototype.do_restart = Restart;
+OccTools.prototype.do_tail = Tail;
 
 module.exports = OccTools;

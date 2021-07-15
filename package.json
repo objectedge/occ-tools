@@ -72,6 +72,7 @@
     "object-deep-search": "0.0.7",
     "occ-custom-bootstrap-less": "github:douglashipolito/occ-custom-bootstrap-less",
     "otpauth": "^7.0.4",
+    "pino-pretty": "^5.1.1",
     "prompt": "^1.1.0",
     "request": "^2.55.0",
     "sequelize-auto-migrations": "^1.0.3",

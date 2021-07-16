@@ -2,7 +2,11 @@
 All notable changes to occ-tools will be documented in this file.
 This project must adhere to [this](https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md) format.
 
-## [2.0.0-beta.49] - 2021-06-24]
+## [2.0.0-beta.50] - 2021-07-16]
+### Fixed
+- Fixed site settings upgrade
+
+## [2.0.0-beta.49] - 2021-07-15]
 
 ### Added
 - New commands to download/upload types (order, item, shopper, product)
